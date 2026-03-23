@@ -28,8 +28,8 @@ The core engine enabling AAMSIR's "Adaptive" capabilities. It employs a **Microk
 Responsible for synthesizing the final response from the retrieved data.
 *   **Orchestrator:** The central controller (Facade) that coordinates the refinement, retrieval, and generation steps. It ensures the request flows smoothly between subsystems.
 *   **Context Aggregator:** Merges results from the three retrievers, removes duplicates, and ranks documents to construct the final context window ($K$).
-*   **Scheduler:** Acts as a broker to manage resource allocation for LLM/SLM inference, handling request prioritization and load balancing.
-*   **Final Answer Model:** The large language model (LLM) that generates the user-facing response based on the aggregated context and original query.
+*   **Scheduler:** Acts as a broker to manage resource allocation for LM inference, handling request prioritization and load balancing.
+*   **Final Answer Model:** The language model (SLM) that generates the user-facing response based on the aggregated context and original query.
 
 ### 2.5 Data Persistence Layer
 *   **Vector Database:** Stores high-dimensional embeddings for semantic search.

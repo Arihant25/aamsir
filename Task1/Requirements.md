@@ -21,7 +21,7 @@ This document outlines the functional and non-functional requirements for the AA
         2.  **Semantic:** Vector-embedding similarity search.
         3.  **Agentic:** Tool-use based retrieval (SLM using `ls`, `grep`, `cat`).
 *   **FR-05: Retrieval Configuration Panel**
-    *   **Description:** An administrative settings page to select active retrieval strategies and switch underlying models (e.g., changing the embedding model or LLM).
+    *   **Description:** An administrative settings page to select active retrieval strategies and switch underlying models (e.g., changing the embedding model or LM).
 
 ### Data Management
 *   **FR-06: Document Management Module**
@@ -60,7 +60,7 @@ These requirements have a profound impact on the system's architecture, driving 
 *   **Architectural Decision:** This requirement drove the adoption of the **Microkernel (Plugin) Architecture** and the **Strategy Pattern**. The core orchestrator defines a `RetrievalStrategy` interface, and specific implementations (Syntactic, Semantic, Agentic) are loaded as plugins. This satisfies the **Open/Closed Principle**.
 
 ### ASR-02: Latency via Context Limitation (NFR-01)
-*   **Rationale:** Large Language Models have finite context windows and high inference costs. Feeding all retrieved documents to the LLM would violate latency constraints and token budgets.
+*   **Rationale:** Small Language Models have finite context windows and high inference costs. Feeding all retrieved documents to the SLM would violate latency constraints and token budgets.
 *   **Architectural Decision:** This necessitated the **Chain of Responsibility Pattern** in the Semantic Retriever. The cascading filter ($I \rightarrow J \rightarrow K$) progressively narrows the candidate set using cheaper operations (Title Match) before expensive ones (Vector Similarity), ensuring we only process the most relevant documents.
 
 ### ASR-03: Scalability of Ingestion (NFR-03, NFR-04)
