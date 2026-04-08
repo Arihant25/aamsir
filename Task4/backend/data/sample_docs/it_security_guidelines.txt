@@ -1,0 +1,54 @@
+IT Security Guidelines — Acme University
+
+Document ID: IT-SEC-2024-001
+Classification: Internal Use Only
+Last Updated: September 2024
+
+1. Purpose
+These guidelines establish the information security standards for all university IT systems, networks, and data. Compliance is mandatory for all employees, faculty, students, and contractors who access university IT resources.
+
+2. Password Policy
+2.1 Minimum length: 12 characters
+2.2 Must include: uppercase, lowercase, numbers, and at least one special character
+2.3 Passwords must be changed every 90 days
+2.4 Previous 12 passwords cannot be reused
+2.5 Account lockout: 5 failed attempts triggers a 30-minute lockout
+2.6 Multi-Factor Authentication (MFA) is required for all staff accounts and VPN access
+
+3. Data Classification
+3.1 Public: Information intended for public release (course catalogs, press releases)
+3.2 Internal: General internal information (meeting notes, internal memos)
+3.3 Confidential: Sensitive information (student records, financial data, HR records)
+3.4 Restricted: Highly sensitive (research data under NDA, medical records, SSNs)
+
+4. Acceptable Use
+4.1 University IT resources are provided for academic and administrative purposes
+4.2 Limited personal use is permitted provided it does not interfere with work duties
+4.3 Prohibited activities include: unauthorized access attempts, cryptocurrency mining, hosting unauthorized services, distribution of copyrighted material, harassment or illegal activities
+
+5. Email Security
+5.1 Do not open attachments from unknown senders
+5.2 Report suspected phishing emails to security@acme.edu
+5.3 Confidential information must not be sent via unencrypted email
+5.4 Use the approved email encryption tool for sensitive communications
+
+6. Network Security
+6.1 All devices connecting to the university network must have current antivirus software
+6.2 Personal devices must be registered with IT before connecting to the corporate network
+6.3 Guest WiFi (AcmeGuest) is available for visitors — no access to internal resources
+6.4 VPN must be used for remote access to internal systems
+
+7. Incident Response
+7.1 Report all security incidents immediately to the IT Security team (ext. 4500 or security@acme.edu)
+7.2 Do not attempt to investigate or remediate on your own
+7.3 Preserve any evidence (screenshots, logs, suspicious emails)
+7.4 The IT Security team will respond within 1 hour during business hours, 4 hours after hours
+
+8. Physical Security
+8.1 Lock your workstation when leaving your desk (Win+L or Ctrl+Cmd+Q)
+8.2 Do not leave sensitive documents on your desk overnight (clean desk policy)
+8.3 Report lost or stolen devices immediately to IT Security
+8.4 Server rooms and network closets require badge access — no tailgating
+
+9. Compliance
+Violation of these guidelines may result in disciplinary action, including suspension of IT access, formal reprimand, or termination. Criminal violations will be reported to law enforcement.

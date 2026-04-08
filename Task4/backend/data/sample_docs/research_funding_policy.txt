@@ -1,0 +1,62 @@
+Research Funding and Grants Policy — Acme University
+
+Policy Number: RES-2024-001
+Effective Date: August 1, 2024
+Office of Research and Sponsored Programs (ORSP)
+
+1. Purpose
+This policy governs the application, management, and reporting of research funding for all faculty and approved graduate students at Acme University.
+
+2. Types of Funding
+
+2.1 Internal Seed Grants
+- Available to all tenure-track and tenured faculty
+- Maximum amount: $25,000 per project
+- Duration: 12 months
+- Application deadline: Rolling (quarterly review)
+- Purpose: Pilot studies, preliminary data collection for external grant applications
+
+2.2 Faculty Development Grants
+- Available to all faculty members
+- Maximum amount: $10,000 per year
+- Covers: Conference travel, workshop attendance, publication fees, equipment
+- Requires department chair endorsement
+
+2.3 Graduate Research Assistantships
+- Available to full-time graduate students in good academic standing
+- Stipend: $2,500/month for Masters, $3,000/month for PhD students
+- Includes tuition waiver
+- Renewable annually based on satisfactory progress
+
+3. External Grant Applications
+
+3.1 All external grant applications must be routed through the ORSP at least 15 business days before the sponsor deadline.
+3.2 The university requires a minimum 10% cost-sharing on federal grants unless waived by the Provost.
+3.3 Indirect cost rate: 52% of modified total direct costs (MTDC) for on-campus research, 26% for off-campus.
+3.4 PI eligibility: Must be full-time faculty. Co-PI may include research staff and adjunct faculty.
+
+4. Budget Management
+
+4.1 All grant expenditures must comply with the sponsor's terms and university procurement policies.
+4.2 Budget modifications exceeding 10% of a line item require ORSP approval.
+4.3 No-cost extensions must be requested at least 30 days before the project end date.
+4.4 Unspent funds must be returned to the sponsor unless a no-cost extension is approved.
+
+5. Intellectual Property
+
+5.1 Inventions and discoveries made using university resources or funding are jointly owned by the university and the inventor(s).
+5.2 The Technology Transfer Office (TTO) handles patent applications and licensing.
+5.3 Revenue from licensed IP is split: 40% inventor(s), 30% department, 30% university.
+
+6. Compliance and Ethics
+
+6.1 All research involving human subjects requires IRB approval before data collection begins.
+6.2 Animal research requires IACUC approval.
+6.3 Research misconduct (fabrication, falsification, plagiarism) will be investigated per federal guidelines and may result in termination and debarment.
+6.4 Conflict of interest disclosures are required annually and for each new grant application.
+
+7. Reporting
+
+7.1 Interim reports: Required every 6 months for internal grants, per sponsor schedule for external grants.
+7.2 Final reports: Due within 90 days of project completion.
+7.3 Publications resulting from funded research must acknowledge the funding source.

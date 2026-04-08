@@ -1,0 +1,197 @@
+"""
+Orchestrator — Microkernel Host (ADR-001).
+
+Coordinates retrieval strategies, aggregates results, and generates
+the final answer. Implements fault isolation (Tactic 3).
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from ..database import DocumentRecord, QueryLog, SessionLocal
+from .strategy import RetrievalStrategy, RetrievedChunk
+
+logger = logging.getLogger(__name__)
+
+
+class ContextAggregator:
+    """Merges and deduplicates results from multiple retrieval strategies."""
+
+    @staticmethod
+    def merge(strategy_results: dict[str, list[RetrievedChunk]], top_k: int = 10) -> list[RetrievedChunk]:
+        """Merge results using Reciprocal Rank Fusion (RRF)."""
+        doc_scores: dict[int, float] = {}
+        doc_best: dict[int, RetrievedChunk] = {}
+        k = 60  # RRF constant
+
+        for strategy_name, chunks in strategy_results.items():
+            for rank, chunk in enumerate(chunks):
+                rrf_score = 1.0 / (k + rank + 1)
+                doc_scores[chunk.doc_id] = doc_scores.get(chunk.doc_id, 0.0) + rrf_score
+
+                # Keep the chunk with the highest individual score per doc
+                if chunk.doc_id not in doc_best or chunk.score > doc_best[chunk.doc_id].score:
+                    doc_best[chunk.doc_id] = chunk
+
+        # Sort by aggregated RRF score
+        ranked_ids = sorted(doc_scores, key=lambda d: doc_scores[d], reverse=True)[:top_k]
+
+        results = []
+        for doc_id in ranked_ids:
+            chunk = doc_best[doc_id]
+            chunk.score = doc_scores[doc_id]
+            # Combine strategy names
+            strategies = [
+                s for s, chunks in strategy_results.items()
+                if any(c.doc_id == doc_id for c in chunks)
+            ]
+            chunk.strategy = "+".join(strategies)
+            results.append(chunk)
+
+        return results
+
+
+class Orchestrator:
+    """Microkernel host that manages retrieval plugins and orchestrates queries."""
+
+    def __init__(self):
+        self._strategies: dict[str, RetrievalStrategy] = {}
+        self._enabled_strategies: set[str] = {"syntactic", "semantic"}
+        self._aggregator = ContextAggregator()
+
+    def register(self, strategy: RetrievalStrategy):
+        """Register a retrieval plugin."""
+        self._strategies[strategy.get_name()] = strategy
+        logger.info(f"Registered strategy: {strategy.get_name()}")
+
+    def set_enabled(self, strategy_names: list[str]):
+        """Set which strategies are enabled."""
+        self._enabled_strategies = set(strategy_names)
+
+    def get_enabled(self) -> list[str]:
+        return list(self._enabled_strategies)
+
+    def get_available(self) -> list[str]:
+        return [
+            name for name, s in self._strategies.items()
+            if s.is_available()
+        ]
+
+    def query(
+        self,
+        query_text: str,
+        strategies: list[str] | None = None,
+        top_k: int = 10,
+    ) -> tuple[list[RetrievedChunk], dict[str, list[RetrievedChunk]], float]:
+        """Execute query across enabled strategies with fault isolation.
+
+        Returns (merged_results, per_strategy_results, elapsed_ms).
+        """
+        start = time.time()
+        active = strategies or list(self._enabled_strategies)
+        strategy_results: dict[str, list[RetrievedChunk]] = {}
+
+        for name in active:
+            strategy = self._strategies.get(name)
+            if not strategy:
+                logger.warning(f"Strategy '{name}' not registered, skipping")
+                continue
+            if not strategy.is_available():
+                logger.warning(f"Strategy '{name}' not available, skipping")
+                continue
+
+            # Fault isolation: wrap each plugin in exception boundary (Tactic 3)
+            try:
+                results = strategy.retrieve(query_text, top_k)
+                strategy_results[name] = results
+                logger.info(f"Strategy '{name}' returned {len(results)} results")
+            except Exception as e:
+                logger.error(f"Strategy '{name}' failed: {e}", exc_info=True)
+                strategy_results[name] = []
+
+        merged = self._aggregator.merge(strategy_results, top_k)
+        elapsed_ms = (time.time() - start) * 1000
+
+        # Log query
+        try:
+            db = SessionLocal()
+            log = QueryLog(
+                query=query_text,
+                strategies_used=",".join(active),
+                response_time_ms=elapsed_ms,
+                result_count=len(merged),
+            )
+            db.add(log)
+            db.commit()
+            db.close()
+        except Exception:
+            pass
+
+        return merged, strategy_results, elapsed_ms
+
+    def generate_answer(self, query: str, chunks: list[RetrievedChunk]) -> str:
+        """Generate a synthesized answer from retrieved chunks.
+
+        Uses a template-based approach for the prototype. In production,
+        this would use an LLM to generate a natural-language answer.
+        """
+        if not chunks:
+            return "No relevant documents were found for your query. Please try rephrasing or uploading more documents."
+
+        # Try to use Ollama for answer generation
+        try:
+            import ollama
+            from ..config import OLLAMA_BASE_URL, OLLAMA_MODEL
+            client = ollama.Client(host=OLLAMA_BASE_URL)
+
+            context = "\n\n".join(
+                f"[Source: {c.title}]\n{c.content}"
+                for c in chunks[:5]
+            )
+
+            prompt = f"""Based on the following source documents, provide a clear and concise answer to the user's question. Cite the source documents by title when referencing information.
+
+Question: {query}
+
+Source Documents:
+{context}
+
+Answer:"""
+
+            response = client.chat(
+                model=OLLAMA_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return response["message"]["content"]
+
+        except Exception:
+            # Fallback: extractive answer focused on the most relevant doc.
+            # Fetch full content from DB for richer snippets.
+            top_score = chunks[0].score if chunks else 0
+            relevant = [
+                c for c in chunks
+                if c.score >= top_score * 0.7
+            ] or chunks[:1]
+
+            # Enrich top result with full DB content
+            top = relevant[0]
+            snippet = top.content
+            try:
+                db = SessionLocal()
+                doc = db.query(DocumentRecord).get(top.doc_id)
+                if doc and doc.content:
+                    snippet = doc.content[:1500]
+                db.close()
+            except Exception:
+                pass
+
+            parts = [f"From **{top.title}**:\n\n{snippet}"]
+            if len(relevant) > 1:
+                others = ", ".join(c.title for c in relevant[1:])
+                parts.append(f"\nAlso see: {others}")
+            return "\n".join(parts)

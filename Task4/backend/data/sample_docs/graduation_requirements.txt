@@ -1,0 +1,52 @@
+Graduation Requirements — Computer Science Department (CSD)
+
+Acme University — Academic Year 2024-2025
+
+1. Degree Requirements Overview
+Students in the Computer Science Department must fulfill the following requirements to be eligible for graduation with a Bachelor of Science (B.Sc.) in Computer Science.
+
+2. Credit Requirements
+2.1 Minimum Total Credits: 128 credit hours
+2.2 Core CS Credits: 64 credit hours from required CS courses
+2.3 Mathematics Credits: 18 credit hours (Calculus I & II, Linear Algebra, Discrete Mathematics, Probability & Statistics)
+2.4 Science Electives: 8 credit hours from approved science courses (Physics, Biology, Chemistry)
+2.5 General Education: 24 credit hours across humanities, social sciences, and writing
+2.6 Free Electives: 14 credit hours
+
+3. Core CS Courses (Required)
+- CS 101: Introduction to Computer Science (4 credits)
+- CS 201: Data Structures and Algorithms (4 credits)
+- CS 210: Computer Organization (4 credits)
+- CS 301: Operating Systems (4 credits)
+- CS 310: Database Systems (4 credits)
+- CS 320: Software Engineering (4 credits)
+- CS 330: Computer Networks (4 credits)
+- CS 340: Theory of Computation (4 credits)
+- CS 401: Compiler Design (4 credits)
+- CS 410: Artificial Intelligence (4 credits)
+- CS 490: Senior Capstone Project (8 credits)
+
+4. GPA Requirements
+4.1 Cumulative GPA: Minimum 2.0 (on a 4.0 scale)
+4.2 Major GPA: Minimum 2.5 in all CS-prefixed courses
+4.3 Students falling below 2.0 cumulative GPA for two consecutive semesters will be placed on academic probation.
+
+5. Capstone Project
+5.1 All students must complete a senior capstone project (CS 490) in their final year.
+5.2 The project must demonstrate integration of at least three core areas of computer science.
+5.3 Projects are evaluated by a panel of three faculty members.
+5.4 A written thesis (minimum 40 pages) and oral defense are required.
+
+6. Residency Requirement
+Students must complete at least 32 of their final 48 credit hours at Acme University. Transfer credits may be applied to earlier coursework with departmental approval.
+
+7. Application for Graduation
+Students must submit their Intent to Graduate form through the Registrar's Office by:
+- October 15 for Spring graduation
+- March 15 for Fall graduation
+- June 1 for Summer graduation
+
+8. Honors Designation
+- Cum Laude: GPA 3.5 - 3.69
+- Magna Cum Laude: GPA 3.7 - 3.89
+- Summa Cum Laude: GPA 3.9 - 4.0

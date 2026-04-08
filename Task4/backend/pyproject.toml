@@ -1,0 +1,28 @@
+[project]
+name = "aamsir-backend"
+version = "0.1.0"
+description = "AAMSIR - Adaptive Architecture for Multi-Strategy Information Retrieval"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy>=2.0.0",
+    "chromadb>=0.5.0",
+    "sentence-transformers>=3.0.0",
+    "rank-bm25>=0.2.2",
+    "python-multipart>=0.0.12",
+    "pydantic>=2.0.0",
+    "pdfplumber>=0.11.0",
+    "nltk>=3.9.0",
+    "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+agentic = ["ollama>=0.4.0"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27.0",
+    "pytest>=8.0.0",
+]
