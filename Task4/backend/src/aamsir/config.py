@@ -29,7 +29,7 @@ for d in [UPLOAD_DIR, DB_DIR, CHROMA_DIR]:
 
 SQLITE_URL = f"sqlite:///{DB_DIR / 'aamsir.db'}"
 EMBEDDING_MODEL = os.getenv("AAMSIR_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-OLLAMA_MODEL = os.getenv("AAMSIR_OLLAMA_MODEL", "llama3.2:1b")
+OLLAMA_MODEL = os.getenv("AAMSIR_OLLAMA_MODEL", "qwen2.5:7b")
 OLLAMA_BASE_URL = os.getenv("AAMSIR_OLLAMA_URL", "http://localhost:11434")
 
 # Retrieval defaults

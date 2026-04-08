@@ -137,7 +137,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
       <header className="border-b border-border glass px-4 sm:px-6 py-4 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

@@ -88,7 +88,7 @@ export default function DocumentsPage() {
   const filtered = documents.filter(
     (d) =>
       d.original_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.title.toLowerCase().includes(searchQuery.toLowerCase())
+      d.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const fileTypeIcon = (type: string) => {
@@ -147,7 +147,7 @@ export default function DocumentsPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 max-w-svw">
         {/* Drop zone */}
         <div
           onDragOver={(e) => {
@@ -204,7 +204,7 @@ export default function DocumentsPage() {
 
         {/* Document list */}
         {loading ? (
-          <div className="space-y-3">
+          <div className="space-y-3 w-full">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -270,7 +270,7 @@ export default function DocumentsPage() {
                   )}
                   <button
                     onClick={() => handleDelete(doc)}
-                    className="p-2 rounded-lg text-muted hover:text-danger hover:bg-danger/5 transition-all duration-200 opacity-0 group-hover:opacity-100 active:scale-90"
+                    className="p-2 rounded-lg text-muted hover:text-danger hover:bg-danger/5 transition-all duration-200 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

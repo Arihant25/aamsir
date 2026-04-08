@@ -15,7 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Markdown from "react-markdown";
-import { api, type SourceDocument } from "@/lib/api";
+import { api, getDocumentDownloadUrl, type SourceDocument } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -44,6 +44,23 @@ const suggestions = [
   "How do I submit a travel reimbursement?",
   "What are the graduation requirements?",
 ];
+
+/** Convert [[doc:ID|Title]] references into standard markdown links. */
+function processDocLinks(text: string): string {
+  return text.replace(
+    /\[\[doc:(\d+)\|([^\]]+)\]\]/g,
+    (_, id, title) => `[${title}](${getDocumentDownloadUrl(Number(id))})`
+  );
+}
+
+/** Custom renderers so all links open in a new tab. */
+const markdownComponents = {
+  a: ({ href, children, ...rest }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+      {children}
+    </a>
+  ),
+};
 
 export default function QueryPage() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -154,7 +171,7 @@ export default function QueryPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
       <header className="border-b border-border glass px-4 sm:px-6 py-4 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -249,8 +266,10 @@ export default function QueryPage() {
                   </div>
                   <div className="flex-1 min-w-0 space-y-2.5">
                     {/* Answer */}
-                    <div className="bg-surface border border-border rounded-2xl rounded-tl-sm px-4 sm:px-5 py-4 shadow-sm prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-a:text-primary">
-                      <Markdown>{msg.content}</Markdown>
+                    <div className="bg-surface border border-border rounded-2xl rounded-tl-sm px-4 sm:px-5 py-4 shadow-sm prose prose-sm max-w-none overflow-hidden wrap-break-word text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-a:text-primary prose-a:underline">
+                      <Markdown components={markdownComponents}>
+                        {processDocLinks(msg.content)}
+                      </Markdown>
                     </div>
 
                     {/* Meta bar */}
@@ -326,9 +345,12 @@ export default function QueryPage() {
                         {expandedSources.has(msg.id) && (
                           <div className="mt-2 space-y-2">
                             {msg.sources.map((src, i) => (
-                              <div
+                              <a
                                 key={i}
-                                className="bg-surface-hover border border-border rounded-xl p-3 sm:p-4 text-sm animate-fade-in-up"
+                                href={getDocumentDownloadUrl(src.doc_id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block bg-surface-hover border border-border rounded-xl p-3 sm:p-4 text-sm animate-fade-in-up hover:border-primary/40 hover:shadow-sm hover:-translate-y-px transition-all duration-200 overflow-hidden"
                                 style={{ animationDelay: `${i * 60}ms` }}
                               >
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
@@ -340,13 +362,13 @@ export default function QueryPage() {
                                     {(src.score * 100).toFixed(0)}%
                                   </span>
                                 </div>
-                                <p className="text-muted text-xs leading-relaxed line-clamp-3">
+                                <p className="text-muted text-xs leading-relaxed line-clamp-3 wrap-break-word">
                                   {src.snippet}
                                 </p>
-                                <p className="text-[10px] text-muted/60 mt-2 truncate">
+                                <p className="text-[10px] text-muted/60 mt-2 truncate min-w-0">
                                   {src.filename}
                                 </p>
-                              </div>
+                              </a>
                             ))}
                           </div>
                         )}
@@ -389,7 +411,7 @@ export default function QueryPage() {
       {/* Input */}
       <div className="border-t border-border/50 glass p-3 sm:p-4 shrink-0">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="relative flex items-end gap-2 bg-surface border border-border rounded-2xl p-2 shadow-sm focus-within:border-primary/50 focus-within:shadow-md focus-within:shadow-primary/5 transition-all duration-300">
+          <div className="relative flex items-end gap-2 bg-surface border border-border rounded-2xl p-2 shadow-sm transition-all duration-300">
             <textarea
               ref={inputRef}
               value={input}

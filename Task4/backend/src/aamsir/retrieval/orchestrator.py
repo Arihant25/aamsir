@@ -143,6 +143,22 @@ class Orchestrator:
         if not chunks:
             return "No relevant documents were found for your query. Please try rephrasing or uploading more documents."
 
+        # Filter to only the clearly relevant chunks (within 70% of top score)
+        top_score = chunks[0].score if chunks else 0
+        relevant = [c for c in chunks if c.score >= top_score * 0.7] or chunks[:1]
+
+        # Enrich relevant chunks with full DB content
+        enriched = []
+        try:
+            db = SessionLocal()
+            for c in relevant:
+                doc = db.query(DocumentRecord).get(c.doc_id)
+                text = doc.content[:2000] if doc and doc.content else c.content
+                enriched.append((c, text))
+            db.close()
+        except Exception:
+            enriched = [(c, c.content) for c in relevant]
+
         # Try to use Ollama for answer generation
         try:
             import ollama
@@ -150,11 +166,11 @@ class Orchestrator:
             client = ollama.Client(host=OLLAMA_BASE_URL)
 
             context = "\n\n".join(
-                f"[Source: {c.title}]\n{c.content}"
-                for c in chunks[:5]
+                f"[Source {c.doc_id}: {c.title}]\n{text}"
+                for c, text in enriched
             )
 
-            prompt = f"""Based on the following source documents, provide a clear and concise answer to the user's question. Cite the source documents by title when referencing information.
+            prompt = f"""Answer the question using ONLY the source documents below. Do not use information that is not in the sources. When citing a source, use exactly this format: [[doc:ID|Title]] where ID is the source number. For example: [[doc:3|Employee Leave Policy]].
 
 Question: {query}
 
@@ -170,28 +186,10 @@ Answer:"""
             return response["message"]["content"]
 
         except Exception:
-            # Fallback: extractive answer focused on the most relevant doc.
-            # Fetch full content from DB for richer snippets.
-            top_score = chunks[0].score if chunks else 0
-            relevant = [
-                c for c in chunks
-                if c.score >= top_score * 0.7
-            ] or chunks[:1]
-
-            # Enrich top result with full DB content
-            top = relevant[0]
-            snippet = top.content
-            try:
-                db = SessionLocal()
-                doc = db.query(DocumentRecord).get(top.doc_id)
-                if doc and doc.content:
-                    snippet = doc.content[:1500]
-                db.close()
-            except Exception:
-                pass
-
-            parts = [f"From **{top.title}**:\n\n{snippet}"]
-            if len(relevant) > 1:
-                others = ", ".join(c.title for c in relevant[1:])
+            # Fallback: extractive answer from the already-enriched content
+            top_chunk, top_text = enriched[0]
+            parts = [f"From **[[doc:{top_chunk.doc_id}|{top_chunk.title}]]**:\n\n{top_text}"]
+            if len(enriched) > 1:
+                others = ", ".join(f"[[doc:{c.doc_id}|{c.title}]]" for c, _ in enriched[1:])
                 parts.append(f"\nAlso see: {others}")
             return "\n".join(parts)

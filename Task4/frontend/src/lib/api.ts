@@ -70,6 +70,10 @@ async function request<T>(
   return res.json();
 }
 
+export function getDocumentDownloadUrl(docId: number): string {
+  return `${API_BASE}/documents/${docId}/download`;
+}
+
 export const api = {
   health: () => request<HealthResponse>("/health"),
 

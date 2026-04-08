@@ -57,10 +57,20 @@
 }
 
 /* ── Base ── */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  overflow-x: hidden;
 }
 
 ::selection {
@@ -68,12 +78,25 @@ body {
   color: white;
 }
 
+/* Kill all focus outlines/rings/shadows globally */
+*:focus,
+*:active,
+textarea:focus,
+input:focus,
+select:focus,
+button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none;
+}
+
+/* Re-enable only for keyboard tabbing */
 :focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--primary) !important;
   outline-offset: 2px;
 }
 
-/* ── Interactive cursors ── */
+/* ── Interactive elements ── */
 button,
 [role="button"],
 a,
@@ -86,12 +109,22 @@ input[type="reset"],
 input[type="checkbox"],
 input[type="radio"] {
   cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 button:disabled,
 [aria-disabled="true"],
 .cursor-not-allowed {
   cursor: not-allowed;
+}
+
+/* Prevent blue/purple active highlight on mobile */
+button:active,
+a:active,
+[role="button"]:active {
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 
 /* ── Scrollbar ── */

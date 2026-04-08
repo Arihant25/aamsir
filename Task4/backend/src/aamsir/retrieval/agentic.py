@@ -29,7 +29,7 @@ class AgenticRetriever(RetrievalStrategy):
     by reasoning about document summaries.
     """
 
-    def __init__(self, model: str = "llama3.2:1b", base_url: str = "http://localhost:11434"):
+    def __init__(self, model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434"):
         self._model = model
         self._base_url = base_url
 

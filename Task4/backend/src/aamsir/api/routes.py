@@ -23,11 +23,14 @@ import shutil
 import time
 from pathlib import Path
 
+import mimetypes
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..config import UPLOAD_DIR
+from ..config import SAMPLE_DIR, UPLOAD_DIR
 from ..database import DocumentRecord, FeedbackRecord, QueryLog, SessionLocal, get_db
 from ..ingestion.pipeline import run_pipeline
 from ..models import (
@@ -180,6 +183,29 @@ def get_document(doc_id: int):
             "chunk_count": doc.chunk_count,
             "uploaded_at": doc.uploaded_at.isoformat() if doc.uploaded_at else None,
         }
+    finally:
+        db.close()
+
+
+@router.get("/documents/{doc_id}/download")
+def download_document(doc_id: int):
+    """Serve the original uploaded file for viewing/download."""
+    db = SessionLocal()
+    try:
+        doc = db.query(DocumentRecord).get(doc_id)
+        if not doc:
+            raise HTTPException(404, "Document not found")
+        file_path = UPLOAD_DIR / doc.filename
+        if not file_path.exists():
+            file_path = SAMPLE_DIR / doc.filename
+        if not file_path.exists():
+            raise HTTPException(404, "File not found on disk")
+        content_type = mimetypes.guess_type(str(file_path))[0] or "text/plain"
+        return FileResponse(
+            path=str(file_path),
+            media_type=content_type,
+            headers={"Content-Disposition": "inline"},
+        )
     finally:
         db.close()
 
