@@ -32,20 +32,20 @@ class AgenticRetriever(RetrievalStrategy):
     def __init__(self, model: str = "llama3.2:1b", base_url: str = "http://localhost:11434"):
         self._model = model
         self._base_url = base_url
-        self._available: bool | None = None
 
     def is_available(self) -> bool:
-        if self._available is not None:
-            return self._available
+        """Check Ollama availability on every call (no caching).
+
+        Ollama may be started/stopped at any time, so we probe on each
+        request to support dynamic availability.
+        """
         try:
             import ollama
             client = ollama.Client(host=self._base_url)
             client.list()
-            self._available = True
+            return True
         except Exception:
-            self._available = False
-            logger.warning("Ollama not available — agentic retrieval disabled")
-        return self._available
+            return False
 
     def retrieve(self, query: str, top_k: int = 5) -> list[RetrievedChunk]:
         if not self.is_available():

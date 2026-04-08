@@ -14,6 +14,7 @@ import {
   Clock,
   Sparkles,
 } from "lucide-react";
+import Markdown from "react-markdown";
 import { api, type SourceDocument } from "@/lib/api";
 
 interface Message {
@@ -239,10 +240,8 @@ export default function QueryPage() {
                   </div>
                   <div className="flex-1 space-y-3">
                     {/* Answer */}
-                    <div className="bg-surface border border-border rounded-2xl rounded-tl-md px-5 py-4">
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-                        {msg.content}
-                      </div>
+                    <div className="bg-surface border border-border rounded-2xl rounded-tl-md px-5 py-4 prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-a:text-primary">
+                      <Markdown>{msg.content}</Markdown>
                     </div>
 
                     {/* Meta bar */}

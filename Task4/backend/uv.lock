@@ -16,6 +16,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "nltk" },
     { name = "numpy" },
+    { name = "ollama" },
     { name = "pdfplumber" },
     { name = "pydantic" },
     { name = "python-multipart" },
@@ -23,11 +24,6 @@ dependencies = [
     { name = "sentence-transformers" },
     { name = "sqlalchemy" },
     { name = "uvicorn", extra = ["standard"] },
-]
-
-[package.optional-dependencies]
-agentic = [
-    { name = "ollama" },
 ]
 
 [package.dev-dependencies]
@@ -42,7 +38,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "nltk", specifier = ">=3.9.0" },
     { name = "numpy", specifier = ">=1.26.0" },
-    { name = "ollama", marker = "extra == 'agentic'", specifier = ">=0.4.0" },
+    { name = "ollama", specifier = ">=0.4.0" },
     { name = "pdfplumber", specifier = ">=0.11.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "python-multipart", specifier = ">=0.0.12" },
@@ -51,7 +47,6 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
 ]
-provides-extras = ["agentic"]
 
 [package.metadata.requires-dev]
 dev = [
