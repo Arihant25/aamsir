@@ -34,10 +34,16 @@ const strategyIcons: Record<string, typeof Zap> = {
 };
 
 const strategyLabels: Record<string, string> = {
-  syntactic: "Keyword (BM25)",
-  semantic: "Semantic (Vector)",
-  agentic: "Agentic (LLM)",
+  syntactic: "Keyword",
+  semantic: "Semantic",
+  agentic: "Agentic",
 };
+
+const suggestions = [
+  "What is the leave policy for employees?",
+  "How do I submit a travel reimbursement?",
+  "What are the graduation requirements?",
+];
 
 export default function QueryPage() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -60,7 +66,6 @@ export default function QueryPage() {
   const toggleStrategy = (s: string) => {
     setSelectedStrategies((prev) => {
       if (prev.includes(s)) {
-        // Don't allow deselecting the last strategy
         if (prev.length <= 1) return prev;
         return prev.filter((x) => x !== s);
       }
@@ -77,7 +82,7 @@ export default function QueryPage() {
     });
   };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     const query = input.trim();
     if (!query || loading) return;
@@ -123,8 +128,7 @@ export default function QueryPage() {
   ) => {
     const msg = messages.find((m) => m.id === msgId);
     if (!msg) return;
-    const userQuery =
-      messages[messages.indexOf(msg) - 1]?.content || "";
+    const userQuery = messages[messages.indexOf(msg) - 1]?.content || "";
 
     setMessages((prev) =>
       prev.map((m) => (m.id === msgId ? { ...m, feedback: rating } : m))
@@ -138,7 +142,7 @@ export default function QueryPage() {
         msg.strategies?.join(",") || ""
       );
     } catch {
-      // Silently fail — feedback is non-critical
+      /* feedback is non-critical */
     }
   };
 
@@ -152,16 +156,16 @@ export default function QueryPage() {
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <header className="border-b border-border bg-surface/80 backdrop-blur-sm px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">Ask AAMSIR</h1>
-            <p className="text-sm text-muted">
+      <header className="border-b border-border glass px-4 sm:px-6 py-4 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="pl-12 lg:pl-0">
+            <h1 className="text-lg sm:text-xl font-semibold">Ask AAMSIR</h1>
+            <p className="text-xs sm:text-sm text-muted">
               Query your documents using natural language
             </p>
           </div>
-          {/* Strategy Toggles */}
-          <div className="flex items-center gap-2">
+          {/* Strategy toggles */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
             {Object.entries(strategyLabels).map(([key, label]) => {
               const Icon = strategyIcons[key];
               const active = selectedStrategies.includes(key);
@@ -169,10 +173,10 @@ export default function QueryPage() {
                 <button
                   key={key}
                   onClick={() => toggleStrategy(key)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
                     active
-                      ? "bg-primary text-white border-primary shadow-sm"
-                      : "bg-surface text-muted border-border hover:border-primary/50"
+                      ? "bg-primary text-white border-primary shadow-sm shadow-primary/20"
+                      : "bg-surface text-muted border-border hover:border-primary/40 hover:text-foreground active:scale-95"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -185,40 +189,45 @@ export default function QueryPage() {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Empty state */}
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-20 h-20 rounded-2xl bg-primary-light flex items-center justify-center mb-6">
-              <Sparkles className="w-10 h-10 text-primary" />
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <div className="relative mb-8">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-primary-light flex items-center justify-center animate-float">
+                <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 text-primary" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent/20 animate-pulse" />
+              <div className="absolute -bottom-1 -left-2 w-3 h-3 rounded-full bg-primary/20 animate-pulse [animation-delay:500ms]" />
             </div>
-            <h2 className="text-2xl font-semibold mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">
               Welcome to AAMSIR
             </h2>
-            <p className="text-muted max-w-md mb-8">
-              Ask questions about your documents and get accurate, cited
-              answers using multiple retrieval strategies.
+            <p className="text-muted max-w-md mb-10 text-sm leading-relaxed">
+              Ask questions about your documents and get accurate, cited answers
+              using multiple retrieval strategies.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-2xl">
-              {[
-                "What is the leave policy for employees?",
-                "How do I submit a travel reimbursement?",
-                "What are the graduation requirements?",
-              ].map((q) => (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl w-full">
+              {suggestions.map((q, i) => (
                 <button
                   key={q}
                   onClick={() => {
                     setInput(q);
                     inputRef.current?.focus();
                   }}
-                  className="text-left p-4 rounded-xl border border-border bg-surface hover:bg-surface-hover hover:border-primary/30 transition-all text-sm"
+                  className="group text-left p-4 rounded-xl border border-border bg-surface hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-300 text-sm animate-fade-in-up"
+                  style={{ animationDelay: `${i * 80}ms` }}
                 >
-                  <span className="text-muted">{q}</span>
+                  <span className="text-muted group-hover:text-foreground transition-colors duration-200">
+                    {q}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
         )}
 
+        {/* Message list */}
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -229,7 +238,7 @@ export default function QueryPage() {
             <div
               className={`max-w-3xl ${
                 msg.role === "user"
-                  ? "bg-primary text-white rounded-2xl rounded-br-md px-5 py-3"
+                  ? "bg-primary text-white rounded-2xl rounded-br-sm px-4 sm:px-5 py-3 shadow-md shadow-primary/15"
                   : "space-y-3 w-full"
               }`}
             >
@@ -238,14 +247,14 @@ export default function QueryPage() {
                   <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-1">
                     <Bot className="w-4 h-4 text-accent" />
                   </div>
-                  <div className="flex-1 space-y-3">
+                  <div className="flex-1 min-w-0 space-y-2.5">
                     {/* Answer */}
-                    <div className="bg-surface border border-border rounded-2xl rounded-tl-md px-5 py-4 prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-a:text-primary">
+                    <div className="bg-surface border border-border rounded-2xl rounded-tl-sm px-4 sm:px-5 py-4 shadow-sm prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-a:text-primary">
                       <Markdown>{msg.content}</Markdown>
                     </div>
 
                     {/* Meta bar */}
-                    <div className="flex items-center gap-4 px-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
                       {msg.responseTime != null && (
                         <span className="flex items-center gap-1 text-xs text-muted">
                           <Clock className="w-3 h-3" />
@@ -272,13 +281,13 @@ export default function QueryPage() {
                       )}
 
                       {/* Feedback */}
-                      <div className="flex items-center gap-1 ml-auto">
+                      <div className="flex items-center gap-0.5 ml-auto">
                         <button
                           onClick={() => handleFeedback(msg.id, "helpful")}
-                          className={`p-1.5 rounded-lg transition-colors ${
+                          className={`p-1.5 rounded-lg transition-all duration-200 ${
                             msg.feedback === "helpful"
                               ? "text-success bg-success/10"
-                              : "text-muted hover:text-success hover:bg-success/5"
+                              : "text-muted hover:text-success hover:bg-success/5 active:scale-90"
                           }`}
                         >
                           <ThumbsUp className="w-3.5 h-3.5" />
@@ -287,10 +296,10 @@ export default function QueryPage() {
                           onClick={() =>
                             handleFeedback(msg.id, "not_helpful")
                           }
-                          className={`p-1.5 rounded-lg transition-colors ${
+                          className={`p-1.5 rounded-lg transition-all duration-200 ${
                             msg.feedback === "not_helpful"
                               ? "text-danger bg-danger/10"
-                              : "text-muted hover:text-danger hover:bg-danger/5"
+                              : "text-muted hover:text-danger hover:bg-danger/5 active:scale-90"
                           }`}
                         >
                           <ThumbsDown className="w-3.5 h-3.5" />
@@ -303,7 +312,7 @@ export default function QueryPage() {
                       <div>
                         <button
                           onClick={() => toggleSources(msg.id)}
-                          className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary-dark transition-colors px-1"
+                          className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary-dark transition-colors duration-200 px-1 active:scale-95"
                         >
                           <FileText className="w-3.5 h-3.5" />
                           {msg.sources.length} source
@@ -319,21 +328,22 @@ export default function QueryPage() {
                             {msg.sources.map((src, i) => (
                               <div
                                 key={i}
-                                className="bg-surface-hover border border-border rounded-xl p-4 text-sm animate-fade-in-up"
+                                className="bg-surface-hover border border-border rounded-xl p-3 sm:p-4 text-sm animate-fade-in-up"
+                                style={{ animationDelay: `${i * 60}ms` }}
                               >
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="font-medium text-foreground">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
+                                  <span className="font-medium text-foreground text-xs sm:text-sm truncate">
                                     {src.title}
                                   </span>
-                                  <span className="text-xs text-muted bg-surface px-2 py-0.5 rounded-full">
+                                  <span className="text-[10px] sm:text-xs text-muted bg-surface px-2 py-0.5 rounded-full whitespace-nowrap w-fit">
                                     {src.strategy} &middot;{" "}
                                     {(src.score * 100).toFixed(0)}%
                                   </span>
                                 </div>
-                                <p className="text-muted text-xs leading-relaxed">
+                                <p className="text-muted text-xs leading-relaxed line-clamp-3">
                                   {src.snippet}
                                 </p>
-                                <p className="text-[10px] text-muted mt-2">
+                                <p className="text-[10px] text-muted/60 mt-2 truncate">
                                   {src.filename}
                                 </p>
                               </div>
@@ -345,7 +355,9 @@ export default function QueryPage() {
                   </div>
                 </div>
               )}
-              {msg.role === "user" && <p>{msg.content}</p>}
+              {msg.role === "user" && (
+                <p className="text-sm sm:text-base">{msg.content}</p>
+              )}
             </div>
           </div>
         ))}
@@ -357,21 +369,12 @@ export default function QueryPage() {
               <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-1">
                 <Bot className="w-4 h-4 text-accent" />
               </div>
-              <div className="bg-surface border border-border rounded-2xl rounded-tl-md px-5 py-4">
-                <div className="flex items-center gap-2 text-muted">
-                  <div className="flex gap-1">
-                    <span
-                      className="w-2 h-2 bg-primary rounded-full animate-pulse-soft"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <span
-                      className="w-2 h-2 bg-primary rounded-full animate-pulse-soft"
-                      style={{ animationDelay: "300ms" }}
-                    />
-                    <span
-                      className="w-2 h-2 bg-primary rounded-full animate-pulse-soft"
-                      style={{ animationDelay: "600ms" }}
-                    />
+              <div className="bg-surface border border-border rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm">
+                <div className="flex items-center gap-3 text-muted">
+                  <div className="flex gap-1.5">
+                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse-soft" />
+                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse-soft [animation-delay:200ms]" />
+                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse-soft [animation-delay:400ms]" />
                   </div>
                   <span className="text-sm">Searching documents...</span>
                 </div>
@@ -384,12 +387,9 @@ export default function QueryPage() {
       </div>
 
       {/* Input */}
-      <div className="border-t border-border bg-surface/80 backdrop-blur-sm p-4">
-        <form
-          onSubmit={handleSubmit}
-          className="max-w-4xl mx-auto flex items-end gap-3"
-        >
-          <div className="flex-1 relative">
+      <div className="border-t border-border/50 glass p-3 sm:p-4 shrink-0">
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+          <div className="relative flex items-end gap-2 bg-surface border border-border rounded-2xl p-2 shadow-sm focus-within:border-primary/50 focus-within:shadow-md focus-within:shadow-primary/5 transition-all duration-300">
             <textarea
               ref={inputRef}
               value={input}
@@ -397,9 +397,9 @@ export default function QueryPage() {
               onKeyDown={handleKeyDown}
               placeholder="Ask a question about your documents..."
               rows={1}
-              className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary placeholder:text-muted"
+              className="flex-1 resize-none bg-transparent px-3 py-2.5 text-sm focus:outline-none placeholder:text-muted/50"
               style={{
-                minHeight: "48px",
+                minHeight: "40px",
                 maxHeight: "120px",
                 height: "auto",
               }}
@@ -409,14 +409,14 @@ export default function QueryPage() {
                 el.style.height = Math.min(el.scrollHeight, 120) + "px";
               }}
             />
+            <button
+              type="submit"
+              disabled={!input.trim() || loading}
+              className="shrink-0 h-10 w-10 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-sm"
+            >
+              <Send className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={!input.trim() || loading}
-            className="h-12 w-12 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-primary/25"
-          >
-            <Send className="w-5 h-5" />
-          </button>
         </form>
       </div>
     </div>

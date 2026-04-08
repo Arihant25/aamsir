@@ -31,7 +31,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex">
         <Sidebar />
-        <main className="flex-1 flex flex-col min-h-screen ml-64">
+        <main className="flex-1 flex flex-col min-h-screen ml-0 lg:ml-64 transition-[margin] duration-300">
           {children}
         </main>
       </body>
