@@ -15,7 +15,7 @@ import {
   Hash,
   Layers,
 } from "lucide-react";
-import { api, type DocumentInfo } from "@/lib/api";
+import { api, getDocumentDownloadUrl, type DocumentInfo } from "@/lib/api";
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<DocumentInfo[]>([]);
@@ -232,7 +232,10 @@ export default function DocumentsPage() {
             {filtered.map((doc, i) => (
               <div
                 key={doc.id}
-                className="bg-surface border border-border rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:bg-surface-hover hover:shadow-sm hover:-translate-y-px transition-all duration-200 group animate-fade-in-up"
+                onClick={() =>
+                  window.open(getDocumentDownloadUrl(doc.id), "_blank")
+                }
+                className="cursor-pointer bg-surface border border-border rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:bg-surface-hover hover:shadow-sm hover:-translate-y-px transition-all duration-200 group animate-fade-in-up"
                 style={{ animationDelay: `${i * 40}ms` }}
               >
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-surface-hover flex items-center justify-center shrink-0">
@@ -269,7 +272,10 @@ export default function DocumentsPage() {
                     </span>
                   )}
                   <button
-                    onClick={() => handleDelete(doc)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(doc);
+                    }}
                     className="p-2 rounded-lg text-muted hover:text-danger hover:bg-danger/5 transition-all duration-200 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90"
                   >
                     <Trash2 className="w-4 h-4" />
