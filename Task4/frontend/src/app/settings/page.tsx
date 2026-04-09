@@ -139,21 +139,21 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
-      <header className="border-b border-border glass px-4 sm:px-6 py-4 shrink-0">
+      <header className="border-b border-border bg-background px-4 sm:px-6 py-4 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="pl-12 lg:pl-0">
-            <h1 className="text-lg sm:text-xl font-semibold">Settings</h1>
-            <p className="text-xs sm:text-sm text-muted">
+            <h1 className="text-lg font-serif font-medium text-foreground">Settings</h1>
+            <p className="text-xs text-muted" style={{ lineHeight: "1.6" }}>
               Configure retrieval strategies and view system analytics
             </p>
           </div>
           <button
             onClick={saveConfig}
             disabled={saving}
-            className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm active:scale-95 ${
+            className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all duration-150 shadow-sm ${
               saved
-                ? "bg-success text-white shadow-success/20"
-                : "bg-primary text-white hover:bg-primary-dark shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                ? "bg-success text-white"
+                : "bg-primary text-white hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
             }`}
           >
             {saved ? (
@@ -164,7 +164,7 @@ export default function SettingsPage() {
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                {saving ? "Saving..." : "Save Changes"}
+                {saving ? "Saving…" : "Save Changes"}
               </>
             )}
           </button>
@@ -174,8 +174,8 @@ export default function SettingsPage() {
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-8">
         {/* Retrieval Strategies */}
         <section className="animate-fade-in-up">
-          <h2 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-2">
-            <Settings className="w-5 h-5 text-primary" />
+          <h2 className="text-base font-serif font-medium text-foreground mb-4 flex items-center gap-2">
+            <Settings className="w-4 h-4 text-primary" />
             Retrieval Strategies
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
@@ -189,10 +189,10 @@ export default function SettingsPage() {
                     key={key}
                     onClick={() => toggleStrategy(key)}
                     disabled={!isAvailable}
-                    className={`text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-200 ${
+                    className={`text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-150 ${
                       isEnabled
-                        ? "border-primary bg-primary-light/30 shadow-sm"
-                        : "border-border hover:border-primary/30 hover:shadow-sm"
+                        ? "border-primary bg-primary-light"
+                        : "border-border-strong bg-surface hover:border-primary/30"
                     } ${
                       !isAvailable
                         ? "opacity-50 cursor-not-allowed"
@@ -201,29 +201,29 @@ export default function SettingsPage() {
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors duration-200 ${
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-150 ${
                           isEnabled
                             ? "bg-primary text-white"
                             : "bg-surface-hover text-muted"
                         }`}
                       >
-                        <Icon className="w-5 h-5" />
+                        <Icon className="w-4 h-4" />
                       </div>
-                      {/* Toggle indicator */}
+                      {/* Toggle */}
                       <div
-                        className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-200 ${
+                        className={`w-10 h-6 rounded-full p-0.5 transition-colors duration-150 ${
                           isEnabled ? "bg-primary" : "bg-border-strong"
                         }`}
                       >
                         <div
-                          className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                          className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-150 ${
                             isEnabled ? "translate-x-4" : "translate-x-0"
                           }`}
                         />
                       </div>
                     </div>
-                    <h3 className="font-medium text-sm mb-1">{label}</h3>
-                    <p className="text-xs text-muted leading-relaxed">
+                    <h3 className="font-medium text-sm text-foreground mb-1">{label}</h3>
+                    <p className="text-xs text-muted" style={{ lineHeight: "1.6" }}>
                       {description}
                     </p>
                     {!isAvailable && (
@@ -240,8 +240,8 @@ export default function SettingsPage() {
 
         {/* Model Configuration */}
         <section className="animate-fade-in-up [animation-delay:100ms]">
-          <h2 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-2">
-            <Cpu className="w-5 h-5 text-primary" />
+          <h2 className="text-base font-serif font-medium text-foreground mb-4 flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-primary" />
             Model Configuration
           </h2>
           <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 space-y-4">
@@ -250,7 +250,7 @@ export default function SettingsPage() {
                 <label className="text-xs font-medium text-muted mb-1.5 block">
                   Embedding Model
                 </label>
-                <div className="px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-mono">
+                <div className="px-4 py-2.5 rounded-xl border border-border-strong bg-background text-sm font-mono text-foreground">
                   {config?.embedding_model || "all-MiniLM-L6-v2"}
                 </div>
               </div>
@@ -258,7 +258,7 @@ export default function SettingsPage() {
                 <label className="text-xs font-medium text-muted mb-1.5 block">
                   BM25 Top-K Results
                 </label>
-                <div className="px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-mono">
+                <div className="px-4 py-2.5 rounded-xl border border-border-strong bg-background text-sm font-mono text-foreground">
                   {config?.bm25_top_k || 10}
                 </div>
               </div>
@@ -267,7 +267,7 @@ export default function SettingsPage() {
               <label className="text-xs font-medium text-muted mb-1.5 block">
                 Semantic Top-K Results
               </label>
-              <div className="px-4 py-2.5 rounded-xl border border-border bg-background text-sm font-mono">
+              <div className="px-4 py-2.5 rounded-xl border border-border-strong bg-background text-sm font-mono text-foreground">
                 {config?.semantic_top_k || 10}
               </div>
             </div>
@@ -276,22 +276,22 @@ export default function SettingsPage() {
 
         {/* Analytics Dashboard */}
         <section className="animate-fade-in-up [animation-delay:200ms]">
-          <h2 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-primary" />
+          <h2 className="text-base font-serif font-medium text-foreground mb-4 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" />
             System Analytics
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {statCards.map(({ icon: Icon, label, value, color, border }, i) => (
               <div
                 key={label}
-                className={`bg-surface border border-border rounded-xl p-4 sm:p-5 border-l-4 ${border} hover:shadow-sm transition-all duration-200 animate-fade-in-up`}
+                className={`bg-surface border border-border rounded-xl p-4 sm:p-5 border-l-4 ${border} animate-fade-in-up`}
                 style={{ animationDelay: `${(i + 3) * 60}ms` }}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <Icon className={`w-4 h-4 ${color}`} />
                   <span className="text-xs text-muted">{label}</span>
                 </div>
-                <p className="text-2xl sm:text-3xl font-bold">{value}</p>
+                <p className="text-2xl sm:text-3xl font-serif font-medium text-foreground">{value}</p>
               </div>
             ))}
           </div>

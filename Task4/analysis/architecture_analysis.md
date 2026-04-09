@@ -11,7 +11,7 @@ The AAMSIR retrieval engine uses a **Microkernel (Plugin) architecture** where t
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                    Orchestrator (Kernel)              │
+│                    Orchestrator (Kernel)             │
 │                                                      │
 │  ┌──────────┐  ┌──────────────┐  ┌────────────────┐  │
 │  │Syntactic │  │  Semantic    │  │ Agentic        │  │
@@ -19,9 +19,9 @@ The AAMSIR retrieval engine uses a **Microkernel (Plugin) architecture** where t
 │  │ (Plugin) │  │  (Plugin)    │  │ (Plugin)       │  │
 │  └──────────┘  └──────────────┘  └────────────────┘  │
 │                                                      │
-│  ┌────────────────────────────────────────────────┐   │
-│  │           Context Aggregator (RRF)             │   │
-│  └────────────────────────────────────────────────┘   │
+│  ┌────────────────────────────────────────────────┐  │
+│  │           Context Aggregator (RRF)             │  │
+│  └────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────┘
 ```
 

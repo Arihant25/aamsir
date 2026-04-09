@@ -134,20 +134,11 @@ class Orchestrator:
 
         return merged, strategy_results, elapsed_ms
 
-    def generate_answer(self, query: str, chunks: list[RetrievedChunk]) -> str:
-        """Generate a synthesized answer from retrieved chunks.
-
-        Uses a template-based approach for the prototype. In production,
-        this would use an LLM to generate a natural-language answer.
-        """
-        if not chunks:
-            return "No relevant documents were found for your query. Please try rephrasing or uploading more documents."
-
-        # Filter to only the clearly relevant chunks (within 70% of top score)
+    def _build_enriched_context(self, chunks: list[RetrievedChunk]) -> list[tuple[RetrievedChunk, str]]:
+        """Filter to relevant chunks and enrich with full DB content."""
         top_score = chunks[0].score if chunks else 0
         relevant = [c for c in chunks if c.score >= top_score * 0.7] or chunks[:1]
 
-        # Enrich relevant chunks with full DB content
         enriched = []
         try:
             db = SessionLocal()
@@ -159,37 +150,76 @@ class Orchestrator:
         except Exception:
             enriched = [(c, c.content) for c in relevant]
 
-        # Try to use Ollama for answer generation
+        return enriched
+
+    def _build_prompt(self, query: str, enriched: list[tuple[RetrievedChunk, str]]) -> str:
+        context = "\n\n".join(
+            f"[Source {c.doc_id}: {c.title}]\n{text}"
+            for c, text in enriched
+        )
+        return (
+            f"Answer the question using ONLY the source documents below. "
+            f"Do not use information that is not in the sources. "
+            f"When citing a source, use exactly this format: [[doc:ID|Title]] where ID is the source number. "
+            f"For example: [[doc:3|Employee Leave Policy]].\n\n"
+            f"Question: {query}\n\n"
+            f"Source Documents:\n{context}\n\nAnswer:"
+        )
+
+    def generate_answer(self, query: str, chunks: list[RetrievedChunk]) -> str:
+        """Generate a synthesized answer from retrieved chunks."""
+        if not chunks:
+            return "No relevant documents were found for your query. Please try rephrasing or uploading more documents."
+
+        enriched = self._build_enriched_context(chunks)
+
         try:
             import ollama
             from ..config import OLLAMA_BASE_URL, OLLAMA_MODEL
             client = ollama.Client(host=OLLAMA_BASE_URL)
-
-            context = "\n\n".join(
-                f"[Source {c.doc_id}: {c.title}]\n{text}"
-                for c, text in enriched
-            )
-
-            prompt = f"""Answer the question using ONLY the source documents below. Do not use information that is not in the sources. When citing a source, use exactly this format: [[doc:ID|Title]] where ID is the source number. For example: [[doc:3|Employee Leave Policy]].
-
-Question: {query}
-
-Source Documents:
-{context}
-
-Answer:"""
-
             response = client.chat(
                 model=OLLAMA_MODEL,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": self._build_prompt(query, enriched)}],
             )
             return response["message"]["content"]
 
         except Exception:
-            # Fallback: extractive answer from the already-enriched content
             top_chunk, top_text = enriched[0]
             parts = [f"From **[[doc:{top_chunk.doc_id}|{top_chunk.title}]]**:\n\n{top_text}"]
             if len(enriched) > 1:
                 others = ", ".join(f"[[doc:{c.doc_id}|{c.title}]]" for c, _ in enriched[1:])
                 parts.append(f"\nAlso see: {others}")
             return "\n".join(parts)
+
+    def generate_answer_stream(self, query: str, chunks: list[RetrievedChunk]):
+        """Yield answer tokens one at a time (generator).
+
+        Falls back to yielding the full answer as a single token if streaming
+        is unavailable (e.g. Ollama not running).
+        """
+        if not chunks:
+            yield "No relevant documents were found for your query. Please try rephrasing or uploading more documents."
+            return
+
+        enriched = self._build_enriched_context(chunks)
+
+        try:
+            import ollama
+            from ..config import OLLAMA_BASE_URL, OLLAMA_MODEL
+            client = ollama.Client(host=OLLAMA_BASE_URL)
+            response = client.chat(
+                model=OLLAMA_MODEL,
+                messages=[{"role": "user", "content": self._build_prompt(query, enriched)}],
+                stream=True,
+            )
+            for chunk in response:
+                token = chunk["message"]["content"]
+                if token:
+                    yield token
+
+        except Exception:
+            top_chunk, top_text = enriched[0]
+            yield f"From **[[doc:{top_chunk.doc_id}|{top_chunk.title}]]**:\n\n{top_text}"
+            if len(enriched) > 1:
+                others = ", ".join(f"[[doc:{c.doc_id}|{c.title}]]" for c, _ in enriched[1:])
+                yield f"\nAlso see: {others}"

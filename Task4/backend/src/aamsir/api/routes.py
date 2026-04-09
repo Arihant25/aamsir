@@ -19,6 +19,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import json
 import shutil
 import time
 from pathlib import Path
@@ -26,7 +27,7 @@ from pathlib import Path
 import mimetypes
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -109,6 +110,64 @@ def query_documents(req: QueryRequest):
         strategies_used=list(per_strategy.keys()),
         response_time_ms=round(elapsed_ms, 2),
         query=req.query,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Streaming Query Endpoint
+# ---------------------------------------------------------------------------
+@router.post("/query/stream")
+def query_stream(req: QueryRequest):
+    """SSE endpoint that emits sources immediately, then streams answer tokens.
+
+    Events:
+        {"type": "sources", "sources": [...], "strategies_used": [...], "response_time_ms": ...}
+        {"type": "token",   "token": "..."}   (one per LLM token)
+        {"type": "done"}
+    """
+    orch = get_orchestrator()
+
+    def generate():
+        # Phase 1: retrieval — emit sources as soon as they are ready
+        merged, per_strategy, elapsed_ms = orch.query(
+            query_text=req.query,
+            strategies=req.strategies if req.strategies else None,
+            top_k=req.top_k,
+        )
+
+        sources = [
+            SourceDocument(
+                doc_id=c.doc_id,
+                title=c.title,
+                filename=c.filename,
+                snippet=c.content[:400],
+                score=round(c.score, 4),
+                strategy=c.strategy,
+            ).model_dump()
+            for c in merged
+        ]
+
+        yield (
+            "data: "
+            + json.dumps({
+                "type": "sources",
+                "sources": sources,
+                "strategies_used": list(per_strategy.keys()),
+                "response_time_ms": round(elapsed_ms, 2),
+            })
+            + "\n\n"
+        )
+
+        # Phase 2: stream answer tokens
+        for token in orch.generate_answer_stream(req.query, merged):
+            yield "data: " + json.dumps({"type": "token", "token": token}) + "\n\n"
+
+        yield "data: " + json.dumps({"type": "done"}) + "\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

@@ -2,39 +2,22 @@
 @plugin "@tailwindcss/typography";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --primary-light: #eff6ff;
-  --surface: #ffffff;
-  --surface-hover: #f1f5f9;
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --muted: #64748b;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --accent: #7c3aed;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b1120;
-    --foreground: #e2e8f0;
-    --primary: #3b82f6;
-    --primary-dark: #2563eb;
-    --primary-light: #1e3a5f;
-    --surface: #1a2236;
-    --surface-hover: #243049;
-    --border: #2a3654;
-    --border-strong: #3b4a6b;
-    --muted: #94a3b8;
-    --success: #34d399;
-    --danger: #f87171;
-    --warning: #fbbf24;
-    --accent: #a78bfa;
-  }
+  /* Anthropic-inspired warm design system */
+  --background: #f5f4ed;        /* parchment */
+  --foreground: #141413;        /* anthropic near black */
+  --primary: #c96442;           /* terracotta brand */
+  --primary-dark: #b5593b;      /* deeper terracotta */
+  --primary-light: #f2e9e4;     /* light terracotta wash */
+  --surface: #faf9f5;           /* ivory */
+  --surface-hover: #f0eee6;     /* border cream (hover state) */
+  --border: #f0eee6;            /* border cream */
+  --border-strong: #e8e6dc;     /* border warm */
+  --muted: #87867f;             /* stone gray */
+  --success: #4a7c59;           /* muted warm green */
+  --danger: #b53333;            /* error crimson */
+  --warning: #9c7a3c;           /* warm amber */
+  --accent: #5e5d59;            /* olive gray */
+  --charcoal: #4d4c48;          /* charcoal warm */
 }
 
 @theme inline {
@@ -52,8 +35,9 @@
   --color-danger: var(--danger);
   --color-warning: var(--warning);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-mono: 'Courier New', Courier, monospace;
 }
 
 /* ── Base ── */
@@ -69,13 +53,13 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  font-family: var(--font-sans);
   overflow-x: hidden;
 }
 
 ::selection {
   background: var(--primary);
-  color: white;
+  color: #faf9f5;
 }
 
 /* Kill all focus outlines/rings/shadows globally */
@@ -92,7 +76,7 @@ button:focus {
 
 /* Re-enable only for keyboard tabbing */
 :focus-visible {
-  outline: 2px solid var(--primary) !important;
+  outline: 2px solid #3898ec !important;
   outline-offset: 2px;
 }
 
@@ -119,7 +103,6 @@ button:disabled,
   cursor: not-allowed;
 }
 
-/* Prevent blue/purple active highlight on mobile */
 button:active,
 a:active,
 [role="button"]:active {
@@ -195,11 +178,6 @@ a:active,
   }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
 @keyframes pulse-dot {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; }
@@ -222,9 +200,6 @@ a:active,
 .animate-scale-in {
   animation: scaleIn 0.25s ease-out both;
 }
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
 .animate-pulse-soft {
   animation: pulse-dot 1.4s ease-in-out infinite;
 }
@@ -232,16 +207,9 @@ a:active,
   background: linear-gradient(
     90deg,
     var(--surface-hover) 25%,
-    var(--border) 50%,
+    var(--border-strong) 50%,
     var(--surface-hover) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
-}
-
-/* ── Glass ── */
-.glass {
-  background: color-mix(in srgb, var(--surface) 80%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }

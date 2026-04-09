@@ -108,13 +108,13 @@ export default function DocumentsPage() {
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <header className="border-b border-border glass px-4 sm:px-6 py-4 shrink-0">
+      <header className="border-b border-border bg-background px-4 sm:px-6 py-4 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="pl-12 lg:pl-0">
-            <h1 className="text-lg sm:text-xl font-semibold">
+            <h1 className="text-lg font-serif font-medium text-foreground">
               Document Management
             </h1>
-            <p className="text-xs sm:text-sm text-muted">
+            <p className="text-xs text-muted" style={{ lineHeight: "1.6" }}>
               Upload, view, and manage your document corpus
             </p>
           </div>
@@ -125,11 +125,11 @@ export default function DocumentsPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search documents..."
-                className="w-full sm:w-56 pl-9 pr-4 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all duration-200 placeholder:text-muted/50"
+                placeholder="Search documents…"
+                className="w-full sm:w-56 pl-9 pr-4 py-2 rounded-xl border border-border-strong bg-surface text-sm focus:outline-none focus:border-primary/40 transition-all duration-150 placeholder:text-muted/60 text-foreground"
               />
             </div>
-            <label className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-all duration-200 shadow-sm shadow-primary/20 active:scale-95 whitespace-nowrap">
+            <label className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-all duration-150 shadow-sm active:scale-95 whitespace-nowrap cursor-pointer">
               <Upload className="w-4 h-4" />
               <span className="hidden sm:inline">Upload</span>
               <input
@@ -156,20 +156,20 @@ export default function DocumentsPage() {
           }}
           onDragLeave={() => setDragActive(false)}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all duration-300 ${
+          className={`border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all duration-200 ${
             dragActive
-              ? "border-primary bg-primary-light/50 scale-[1.01]"
-              : "border-border hover:border-primary/30"
+              ? "border-primary bg-primary-light"
+              : "border-border-strong hover:border-primary/30 bg-surface"
           }`}
         >
           <FileUp
-            className={`w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-3 transition-colors duration-200 ${
-              dragActive ? "text-primary" : "text-muted/50"
+            className={`w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-3 transition-colors duration-150 ${
+              dragActive ? "text-primary" : "text-muted/40"
             }`}
           />
           <p className="text-sm text-muted">
             {uploading
-              ? "Uploading and indexing..."
+              ? "Uploading and indexing…"
               : "Drag and drop files here, or click Upload above"}
           </p>
           <p className="text-xs text-muted/60 mt-1">
@@ -179,27 +179,19 @@ export default function DocumentsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-surface border border-border rounded-xl p-3 sm:p-4 border-l-4 border-l-primary">
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="w-3.5 h-3.5 text-primary" />
-              <p className="text-[10px] sm:text-xs text-muted">Documents</p>
+          {[
+            { icon: FileText, label: "Documents", value: documents.length, color: "text-primary", border: "border-l-primary" },
+            { icon: Layers, label: "Chunks", value: totalChunks, color: "text-accent", border: "border-l-accent" },
+            { icon: CheckCircle, label: "Indexed", value: indexedCount, color: "text-success", border: "border-l-success" },
+          ].map(({ icon: Icon, label, value, color, border }) => (
+            <div key={label} className={`bg-surface border border-border rounded-xl p-3 sm:p-4 border-l-4 ${border}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <Icon className={`w-3.5 h-3.5 ${color}`} />
+                <p className="text-[10px] sm:text-xs text-muted">{label}</p>
+              </div>
+              <p className="text-xl sm:text-2xl font-serif font-medium text-foreground">{value}</p>
             </div>
-            <p className="text-xl sm:text-2xl font-bold">{documents.length}</p>
-          </div>
-          <div className="bg-surface border border-border rounded-xl p-3 sm:p-4 border-l-4 border-l-accent">
-            <div className="flex items-center gap-2 mb-1">
-              <Layers className="w-3.5 h-3.5 text-accent" />
-              <p className="text-[10px] sm:text-xs text-muted">Chunks</p>
-            </div>
-            <p className="text-xl sm:text-2xl font-bold">{totalChunks}</p>
-          </div>
-          <div className="bg-surface border border-border rounded-xl p-3 sm:p-4 border-l-4 border-l-success">
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle className="w-3.5 h-3.5 text-success" />
-              <p className="text-[10px] sm:text-xs text-muted">Indexed</p>
-            </div>
-            <p className="text-xl sm:text-2xl font-bold">{indexedCount}</p>
-          </div>
+          ))}
         </div>
 
         {/* Document list */}
@@ -235,14 +227,14 @@ export default function DocumentsPage() {
                 onClick={() =>
                   window.open(getDocumentDownloadUrl(doc.id), "_blank")
                 }
-                className="cursor-pointer bg-surface border border-border rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:bg-surface-hover hover:shadow-sm hover:-translate-y-px transition-all duration-200 group animate-fade-in-up"
+                className="cursor-pointer bg-surface border border-border rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:bg-surface-hover hover:border-border-strong hover:-translate-y-px transition-all duration-150 group animate-fade-in-up"
                 style={{ animationDelay: `${i * 40}ms` }}
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-surface-hover flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-background border border-border flex items-center justify-center shrink-0">
                   {fileTypeIcon(doc.file_type)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">
+                  <p className="font-medium text-sm truncate text-foreground">
                     {doc.title || doc.original_name}
                   </p>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
@@ -261,12 +253,12 @@ export default function DocumentsPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {doc.is_indexed ? (
-                    <span className="flex items-center gap-1 text-[10px] sm:text-xs text-success bg-success/10 px-2 py-1 rounded-full whitespace-nowrap">
+                    <span className="flex items-center gap-1 text-[10px] sm:text-xs text-success bg-success/10 px-2 py-1 rounded-md whitespace-nowrap">
                       <CheckCircle className="w-3 h-3" />
                       <span className="hidden sm:inline">Indexed</span>
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-[10px] sm:text-xs text-warning bg-warning/10 px-2 py-1 rounded-full whitespace-nowrap">
+                    <span className="flex items-center gap-1 text-[10px] sm:text-xs text-warning bg-warning/10 px-2 py-1 rounded-md whitespace-nowrap">
                       <AlertCircle className="w-3 h-3" />
                       <span className="hidden sm:inline">Pending</span>
                     </span>
@@ -276,7 +268,7 @@ export default function DocumentsPage() {
                       e.stopPropagation();
                       handleDelete(doc);
                     }}
-                    className="p-2 rounded-lg text-muted hover:text-danger hover:bg-danger/5 transition-all duration-200 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90"
+                    className="p-2 rounded-lg text-muted hover:text-danger hover:bg-danger/5 transition-all duration-150 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -290,7 +282,7 @@ export default function DocumentsPage() {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl animate-slide-in-up text-sm font-medium ${
+          className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg animate-slide-in-up text-sm font-medium ${
             toast.type === "success"
               ? "bg-success text-white"
               : "bg-danger text-white"

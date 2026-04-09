@@ -74,6 +74,11 @@ export function getDocumentDownloadUrl(docId: number): string {
   return `${API_BASE}/documents/${docId}/download`;
 }
 
+export type StreamEvent =
+  | { type: "sources"; sources: SourceDocument[]; strategies_used: string[]; response_time_ms: number }
+  | { type: "token"; token: string }
+  | { type: "done" };
+
 export const api = {
   health: () => request<HealthResponse>("/health"),
 
@@ -82,6 +87,33 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ query, strategies, top_k: topK }),
     }),
+
+  async *queryStream(query: string, strategies: string[], topK: number = 10): AsyncGenerator<StreamEvent> {
+    const res = await fetch(`${API_BASE}/query/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, strategies, top_k: topK }),
+    });
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(error || `Request failed: ${res.status}`);
+    }
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (line.startsWith("data: ") && line.length > 6) {
+          yield JSON.parse(line.slice(6)) as StreamEvent;
+        }
+      }
+    }
+  },
 
   getDocuments: () => request<DocumentInfo[]>("/documents"),
 
