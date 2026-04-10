@@ -83,14 +83,22 @@ def health_check():
 @router.post("/query", response_model=QueryResponse)
 def query_documents(req: QueryRequest):
     orch = get_orchestrator()
+    history = [{"role": m.role, "content": m.content} for m in req.history]
 
+    # Step 1: rewrite query using conversation context
+    search_query = orch.rewrite_query(req.query, history)
+
+    # Step 2: retrieve with the rewritten query
     merged, per_strategy, elapsed_ms = orch.query(
-        query_text=req.query,
+        query_text=search_query,
         strategies=req.strategies if req.strategies else None,
         top_k=req.top_k,
     )
 
-    answer = orch.generate_answer(req.query, merged)
+    # Step 3: generate answer with full history context
+    gen_start = time.time()
+    answer = orch.generate_answer(req.query, merged, history)
+    gen_ms = (time.time() - gen_start) * 1000
 
     sources = [
         SourceDocument(
@@ -108,7 +116,8 @@ def query_documents(req: QueryRequest):
         answer=answer,
         sources=sources,
         strategies_used=list(per_strategy.keys()),
-        response_time_ms=round(elapsed_ms, 2),
+        retrieval_time_ms=round(elapsed_ms, 2),
+        generation_time_ms=round(gen_ms, 2),
         query=req.query,
     )
 
@@ -121,16 +130,34 @@ def query_stream(req: QueryRequest):
     """SSE endpoint that emits sources immediately, then streams answer tokens.
 
     Events:
-        {"type": "sources", "sources": [...], "strategies_used": [...], "response_time_ms": ...}
+        {"type": "rewrite", "rewritten_query": "...", "rewrite_time_ms": ...}
+        {"type": "sources", "sources": [...], "strategies_used": [...], "retrieval_time_ms": ...}
         {"type": "token",   "token": "..."}   (one per LLM token)
-        {"type": "done"}
+        {"type": "done", "generation_time_ms": ...}
     """
     orch = get_orchestrator()
+    history = [{"role": m.role, "content": m.content} for m in req.history]
 
     def generate():
-        # Phase 1: retrieval — emit sources as soon as they are ready
+        # Phase 1: rewrite query using conversation context
+        rw_start = time.time()
+        search_query = orch.rewrite_query(req.query, history)
+        rw_ms = (time.time() - rw_start) * 1000
+
+        if history:
+            yield (
+                "data: "
+                + json.dumps({
+                    "type": "rewrite",
+                    "rewritten_query": search_query,
+                    "rewrite_time_ms": round(rw_ms, 2),
+                })
+                + "\n\n"
+            )
+
+        # Phase 2: retrieval — emit sources as soon as they are ready
         merged, per_strategy, elapsed_ms = orch.query(
-            query_text=req.query,
+            query_text=search_query,
             strategies=req.strategies if req.strategies else None,
             top_k=req.top_k,
         )
@@ -153,16 +180,20 @@ def query_stream(req: QueryRequest):
                 "type": "sources",
                 "sources": sources,
                 "strategies_used": list(per_strategy.keys()),
-                "response_time_ms": round(elapsed_ms, 2),
+                "retrieval_time_ms": round(elapsed_ms, 2),
             })
             + "\n\n"
         )
 
-        # Phase 2: stream answer tokens
-        for token in orch.generate_answer_stream(req.query, merged):
+        # Phase 3: stream answer tokens with history context
+        gen_start = time.time()
+        for token in orch.generate_answer_stream(
+            req.query, merged, history
+        ):
             yield "data: " + json.dumps({"type": "token", "token": token}) + "\n\n"
+        gen_ms = (time.time() - gen_start) * 1000
 
-        yield "data: " + json.dumps({"type": "done"}) + "\n\n"
+        yield "data: " + json.dumps({"type": "done", "generation_time_ms": round(gen_ms, 2)}) + "\n\n"
 
     return StreamingResponse(
         generate(),

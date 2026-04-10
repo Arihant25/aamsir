@@ -12,10 +12,12 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  RefreshCw,
+  Search,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import { prepareWithSegments, measureLineStats } from "@chenglou/pretext";
-import { api, getDocumentDownloadUrl, type SourceDocument } from "@/lib/api";
+import { api, getDocumentDownloadUrl, type SourceDocument, type HistoryMessage } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -23,9 +25,14 @@ interface Message {
   content: string;
   sources?: SourceDocument[];
   strategies?: string[];
-  responseTime?: number;
+  rewriteTime?: number;
+  rewrittenQuery?: string;
+  retrievalTime?: number;
+  generationTime?: number;
   feedback?: "helpful" | "not_helpful" | null;
   bubbleWidth?: number;
+  /** True when conversation history was sent (rewrite step expected). */
+  hasHistory?: boolean;
   /** True while the assistant message is still being streamed. */
   pending?: boolean;
 }
@@ -78,6 +85,101 @@ const markdownComponents = {
     </a>
   ),
 };
+
+function RewriteChip({
+  timeMs,
+  rewrittenQuery,
+}: {
+  timeMs: number;
+  rewrittenQuery?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const isTouch = useRef(false);
+
+  // Detect touch so hover handlers can bail out and avoid double-firing.
+  const onTouchStart = () => { isTouch.current = true; };
+
+  // Close when tapping outside — uses the whole wrapper (chip + card).
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: TouchEvent | MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("touchstart", onDown, { passive: true });
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("touchstart", onDown);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [open]);
+
+  // Desktop hover — ignored after a touch event.
+  const hoverIn = () => {
+    if (isTouch.current) return;
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    setOpen(true);
+  };
+  const hoverOut = () => {
+    if (isTouch.current) return;
+    hoverTimeout.current = setTimeout(() => setOpen(false), 200);
+  };
+
+  // Tap / click handler — on touch devices toggles; on desktop it's a no-op
+  // because hover already handles it.
+  const handleClick = (e: React.MouseEvent) => {
+    if (!isTouch.current) return;
+    e.preventDefault();
+    setOpen((v) => !v);
+  };
+
+  // Reset touch flag after a short delay so hover works again if user
+  // switches back to a mouse (hybrid devices like Surface).
+  useEffect(() => {
+    if (!isTouch.current) return;
+    const id = setTimeout(() => { isTouch.current = false; }, 1000);
+    return () => clearTimeout(id);
+  });
+
+  const timeLabel =
+    timeMs < 1000 ? `${Math.round(timeMs)}ms` : `${(timeMs / 1000).toFixed(1)}s`;
+
+  return (
+    <div
+      ref={wrapperRef}
+      className="relative"
+      onMouseEnter={hoverIn}
+      onMouseLeave={hoverOut}
+      onTouchStart={onTouchStart}
+    >
+      <button
+        type="button"
+        onClick={handleClick}
+        className="flex items-center gap-1.5 text-xs text-primary/80 bg-primary/5 border border-primary/20 border-dashed px-2 py-0.5 rounded-lg hover:bg-primary/10 hover:border-primary/30 active:bg-primary/15 transition-all duration-150"
+      >
+        <RefreshCw className="w-3 h-3" />
+        Rewrite {timeLabel}
+        {rewrittenQuery && <Search className="w-2.5 h-2.5 opacity-50" />}
+      </button>
+
+      {open && rewrittenQuery && (
+        <div className="absolute left-0 bottom-full mb-2 z-50 animate-scale-in origin-bottom-left">
+          <div className="bg-surface border border-border-strong rounded-xl shadow-lg px-4 py-3 max-w-[min(20rem,calc(100vw-3rem))] w-max">
+            <p className="text-[10px] uppercase tracking-wider text-muted/70 font-medium mb-1.5">
+              Searched as
+            </p>
+            <p className="text-sm text-foreground leading-relaxed">
+              &ldquo;{rewrittenQuery}&rdquo;
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function LoadingDots({ label }: { label: string }) {
   return (
@@ -146,11 +248,17 @@ export default function QueryPage() {
     // Add both messages immediately; the assistant stub shows a spinner until
     // tokens arrive. This means the message element stays in the DOM for the
     // entire streaming duration — no fade-in re-animation when streaming ends.
+    // Build conversation history from prior messages.
+    const history: HistoryMessage[] = messages
+      .filter((m) => m.content)
+      .map((m) => ({ role: m.role, content: m.content }));
+
     const assistantStub: Message = {
       id: msgId,
       role: "assistant",
       content: "",
       pending: true,
+      hasHistory: history.length > 0,
       feedback: null,
     };
 
@@ -162,20 +270,27 @@ export default function QueryPage() {
     let draft: Message = assistantStub;
 
     try {
-      for await (const event of api.queryStream(query, selectedStrategies)) {
-        if (event.type === "sources") {
+      for await (const event of api.queryStream(query, selectedStrategies, 10, history)) {
+        if (event.type === "rewrite") {
+          draft = {
+            ...draft,
+            rewriteTime: event.rewrite_time_ms,
+            rewrittenQuery: event.rewritten_query,
+          };
+          setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...draft } : m)));
+        } else if (event.type === "sources") {
           draft = {
             ...draft,
             sources: event.sources,
             strategies: event.strategies_used,
-            responseTime: event.response_time_ms,
+            retrievalTime: event.retrieval_time_ms,
           };
           setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...draft } : m)));
         } else if (event.type === "token") {
           draft = { ...draft, content: draft.content + event.token };
           setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...draft } : m)));
         } else if (event.type === "done") {
-          draft = { ...draft, pending: false };
+          draft = { ...draft, pending: false, generationTime: event.generation_time_ms };
           setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...draft } : m)));
         }
       }
@@ -330,7 +445,13 @@ export default function QueryPage() {
                         </Markdown>
                       ) : (
                         <LoadingDots
-                          label={msg.sources ? "Generating answer…" : "Searching documents…"}
+                          label={
+                            msg.sources
+                              ? "Generating answer…"
+                              : msg.hasHistory && !msg.rewriteTime
+                                ? "Understanding context…"
+                                : "Searching documents…"
+                          }
                         />
                       )}
                     </div>
@@ -338,12 +459,28 @@ export default function QueryPage() {
                     {/* Meta bar — only shown once streaming is complete */}
                     {!msg.pending && (
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
-                        {msg.responseTime != null && (
+                        {msg.rewriteTime != null && (
+                          <RewriteChip
+                            timeMs={msg.rewriteTime}
+                            rewrittenQuery={msg.rewrittenQuery}
+                          />
+                        )}
+                        {msg.retrievalTime != null && (
                           <span className="flex items-center gap-1 text-xs text-muted">
                             <Clock className="w-3 h-3" />
-                            {msg.responseTime < 1000
-                              ? `${Math.round(msg.responseTime)}ms`
-                              : `${(msg.responseTime / 1000).toFixed(1)}s`}
+                            RAG{" "}
+                            {msg.retrievalTime < 1000
+                              ? `${Math.round(msg.retrievalTime)}ms`
+                              : `${(msg.retrievalTime / 1000).toFixed(1)}s`}
+                          </span>
+                        )}
+                        {msg.generationTime != null && (
+                          <span className="flex items-center gap-1 text-xs text-muted">
+                            <Clock className="w-3 h-3" />
+                            Gen{" "}
+                            {msg.generationTime < 1000
+                              ? `${Math.round(msg.generationTime)}ms`
+                              : `${(msg.generationTime / 1000).toFixed(1)}s`}
                           </span>
                         )}
                         {msg.strategies && msg.strategies.length > 0 && (

@@ -15,12 +15,20 @@ from pydantic import BaseModel
 # ── Request Models ──────────────────────────────────────────────────────────
 
 
+class HistoryMessage(BaseModel):
+    """A single message in the conversation history."""
+
+    role: str  # "user" | "assistant"
+    content: str
+
+
 class QueryRequest(BaseModel):
     """Payload for ``POST /api/query``."""
 
     query: str
     strategies: list[str] = ["syntactic", "semantic"]
     top_k: int = 10
+    history: list[HistoryMessage] = []
 
 
 class FeedbackRequest(BaseModel):
@@ -61,7 +69,8 @@ class QueryResponse(BaseModel):
     answer: str
     sources: list[SourceDocument]
     strategies_used: list[str]
-    response_time_ms: float
+    retrieval_time_ms: float
+    generation_time_ms: float
     query: str
 
 

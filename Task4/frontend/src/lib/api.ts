@@ -13,7 +13,8 @@ export interface QueryResponse {
   answer: string;
   sources: SourceDocument[];
   strategies_used: string[];
-  response_time_ms: number;
+  retrieval_time_ms: number;
+  generation_time_ms: number;
   query: string;
 }
 
@@ -74,10 +75,16 @@ export function getDocumentDownloadUrl(docId: number): string {
   return `${API_BASE}/documents/${docId}/download`;
 }
 
+export interface HistoryMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export type StreamEvent =
-  | { type: "sources"; sources: SourceDocument[]; strategies_used: string[]; response_time_ms: number }
+  | { type: "rewrite"; rewritten_query: string; rewrite_time_ms: number }
+  | { type: "sources"; sources: SourceDocument[]; strategies_used: string[]; retrieval_time_ms: number }
   | { type: "token"; token: string }
-  | { type: "done" };
+  | { type: "done"; generation_time_ms: number };
 
 export const api = {
   health: () => request<HealthResponse>("/health"),
@@ -88,11 +95,11 @@ export const api = {
       body: JSON.stringify({ query, strategies, top_k: topK }),
     }),
 
-  async *queryStream(query: string, strategies: string[], topK: number = 10): AsyncGenerator<StreamEvent> {
+  async *queryStream(query: string, strategies: string[], topK: number = 10, history: HistoryMessage[] = []): AsyncGenerator<StreamEvent> {
     const res = await fetch(`${API_BASE}/query/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, strategies, top_k: topK }),
+      body: JSON.stringify({ query, strategies, top_k: topK, history }),
     });
     if (!res.ok) {
       const error = await res.text();

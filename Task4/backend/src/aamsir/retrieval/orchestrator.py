@@ -64,6 +64,43 @@ class Orchestrator:
         self._enabled_strategies: set[str] = {"syntactic", "semantic"}
         self._aggregator = ContextAggregator()
 
+    def rewrite_query(self, query: str, history: list[dict[str, str]]) -> str:
+        """Rewrite a conversational follow-up into a standalone search query.
+
+        If there is no history the original query is returned unchanged.
+        """
+        if not history:
+            return query
+
+        history_text = "\n".join(
+            f"{msg['role'].title()}: {msg['content']}"
+            for msg in history[-6:]
+        )
+
+        prompt = (
+            "Given the conversation history and a follow-up question, "
+            "rewrite the follow-up question as a standalone search query that "
+            "captures the full intent. Output ONLY the rewritten query, nothing else.\n\n"
+            f"Conversation History:\n{history_text}\n\n"
+            f"Follow-up Question: {query}\n\n"
+            "Standalone Query:"
+        )
+
+        try:
+            import ollama
+            from ..config import OLLAMA_BASE_URL, OLLAMA_MODEL
+            client = ollama.Client(host=OLLAMA_BASE_URL)
+            response = client.chat(
+                model=OLLAMA_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            rewritten = response["message"]["content"].strip()
+            logger.info(f"Query rewritten: '{query}' → '{rewritten}'")
+            return rewritten if rewritten else query
+        except Exception as e:
+            logger.warning(f"Query rewrite failed ({e}), using original query")
+            return query
+
     def register(self, strategy: RetrievalStrategy):
         """Register a retrieval plugin."""
         self._strategies[strategy.get_name()] = strategy
@@ -152,21 +189,41 @@ class Orchestrator:
 
         return enriched
 
-    def _build_prompt(self, query: str, enriched: list[tuple[RetrievedChunk, str]]) -> str:
+    def _build_prompt(
+        self,
+        query: str,
+        enriched: list[tuple[RetrievedChunk, str]],
+        history: list[dict[str, str]] | None = None,
+    ) -> str:
         context = "\n\n".join(
             f"[Source {c.doc_id}: {c.title}]\n{text}"
             for c, text in enriched
         )
+
+        history_section = ""
+        if history:
+            history_text = "\n".join(
+                f"{msg['role'].title()}: {msg['content']}"
+                for msg in history[-6:]
+            )
+            history_section = f"\nConversation History:\n{history_text}\n"
+
         return (
             f"Answer the question using ONLY the source documents below. "
             f"Do not use information that is not in the sources. "
             f"When citing a source, use exactly this format: [[doc:ID|Title]] where ID is the source number. "
-            f"For example: [[doc:3|Employee Leave Policy]].\n\n"
+            f"For example: [[doc:3|Employee Leave Policy]]."
+            f"{history_section}\n\n"
             f"Question: {query}\n\n"
             f"Source Documents:\n{context}\n\nAnswer:"
         )
 
-    def generate_answer(self, query: str, chunks: list[RetrievedChunk]) -> str:
+    def generate_answer(
+        self,
+        query: str,
+        chunks: list[RetrievedChunk],
+        history: list[dict[str, str]] | None = None,
+    ) -> str:
         """Generate a synthesized answer from retrieved chunks."""
         if not chunks:
             return "No relevant documents were found for your query. Please try rephrasing or uploading more documents."
@@ -177,9 +234,10 @@ class Orchestrator:
             import ollama
             from ..config import OLLAMA_BASE_URL, OLLAMA_MODEL
             client = ollama.Client(host=OLLAMA_BASE_URL)
+            prompt = self._build_prompt(query, enriched, history)
             response = client.chat(
                 model=OLLAMA_MODEL,
-                messages=[{"role": "user", "content": self._build_prompt(query, enriched)}],
+                messages=[{"role": "user", "content": prompt}],
             )
             return response["message"]["content"]
 
@@ -191,7 +249,12 @@ class Orchestrator:
                 parts.append(f"\nAlso see: {others}")
             return "\n".join(parts)
 
-    def generate_answer_stream(self, query: str, chunks: list[RetrievedChunk]):
+    def generate_answer_stream(
+        self,
+        query: str,
+        chunks: list[RetrievedChunk],
+        history: list[dict[str, str]] | None = None,
+    ):
         """Yield answer tokens one at a time (generator).
 
         Falls back to yielding the full answer as a single token if streaming
@@ -207,9 +270,10 @@ class Orchestrator:
             import ollama
             from ..config import OLLAMA_BASE_URL, OLLAMA_MODEL
             client = ollama.Client(host=OLLAMA_BASE_URL)
+            prompt = self._build_prompt(query, enriched, history)
             response = client.chat(
                 model=OLLAMA_MODEL,
-                messages=[{"role": "user", "content": self._build_prompt(query, enriched)}],
+                messages=[{"role": "user", "content": prompt}],
                 stream=True,
             )
             for chunk in response:
