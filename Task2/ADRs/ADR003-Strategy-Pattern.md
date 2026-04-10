@@ -1,5 +1,9 @@
 # ADR 003: Strategy Pattern for Retrieval Component Implementation
 
+## Status
+
+Accepted
+
 ## Context and Problem Statement
 Within the Retrieval Engine, we need to implement different algorithms for fetching documents (BM25 for syntactic, Cosine Similarity for semantic, Tool-use for agentic). The orchestrator needs to invoke these algorithms interchangeably. Using `if-else` or `switch` statements to select the algorithm breaks the Open/Closed Principle and makes the orchestrator class rigid and hard to test.
 

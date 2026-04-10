@@ -27,6 +27,8 @@ export default function DocumentsPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DocumentInfo | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -65,15 +67,22 @@ export default function DocumentsPage() {
     fetchDocuments();
   };
 
-  const handleDelete = async (doc: DocumentInfo) => {
-    if (!confirm(`Delete "${doc.original_name}"? This cannot be undone.`))
-      return;
+  const handleDelete = (doc: DocumentInfo) => {
+    setDeleteTarget(doc);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await api.deleteDocument(doc.id);
-      setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-      showToast("success", `"${doc.original_name}" deleted`);
+      await api.deleteDocument(deleteTarget.id);
+      setDocuments((prev) => prev.filter((d) => d.id !== deleteTarget.id));
+      showToast("success", `"${deleteTarget.original_name}" deleted`);
     } catch {
       showToast("error", "Failed to delete document");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -278,6 +287,58 @@ export default function DocumentsPage() {
           </div>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => !deleting && setDeleteTarget(null)}
+          />
+          <div className="relative bg-background border border-border rounded-2xl shadow-xl w-full max-w-sm p-6 animate-fade-in-up">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-danger" />
+              </div>
+              <div>
+                <h2 className="font-serif font-medium text-foreground text-base">
+                  Delete document?
+                </h2>
+                <p className="text-xs text-muted mt-1 leading-relaxed">
+                  <span className="font-medium text-foreground">&ldquo;{deleteTarget.original_name}&rdquo;</span>{" "}
+                  will be permanently removed from the corpus. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-muted border border-border hover:bg-surface-hover transition-all duration-150 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-danger text-white hover:bg-danger/90 transition-all duration-150 active:scale-95 disabled:opacity-60 flex items-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Deleting…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (

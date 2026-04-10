@@ -1,5 +1,9 @@
 # ADR 004: Broker Pattern for Scheduler
 
+## Status
+
+Accepted
+
 ## Context and Problem Statement
 The system relies on various models (SLMs for agentic retrieval and generation, Embedding models). Requests come from multiple users concurrently. Directly coupling the user request handler to specific model instances creates a bottleneck and makes it hard to manage "resources" (e.g., if we have limited GPU slots). We need a way to decouple the request submission from the request execution to improved throughput and reliability.
 ## Addresses Concerns

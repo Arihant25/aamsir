@@ -38,7 +38,7 @@ AAMSIR (Adaptive Architecture for Multi-Strategy Information Retrieval) addresse
 | Relational Database | SQLite (via SQLAlchemy) |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Keyword Search | rank_bm25 |
-| LLM (Optional) | Ollama (llama3.2:1b) |
+| LLM (Optional) | Ollama (qwen2.5:7b) |
 | Frontend | Next.js 16, TypeScript, Tailwind CSS |
 | PDF Extraction | pdfplumber |
 
@@ -51,11 +51,12 @@ AAMSIR (Adaptive Architecture for Multi-Strategy Information Retrieval) addresse
 | ID | Requirement | Architectural Significance |
 |----|------------|---------------------------|
 | FR-01 | Query Interface Dashboard | Drives the Facade pattern (single API entry point) |
-| FR-02 | Result Exploration with source snippets | Requires chunked storage and metadata tracking |
+| FR-02 | Result Exploration with source snippets and inline document preview | Requires chunked storage, metadata tracking, and file-serving endpoint |
 | FR-03 | User Feedback Module (helpful/not helpful) | Requires persistence layer and analytics |
 | FR-04 | Multi-Modal Retrieval (Syntactic, Semantic, Agentic) | Drives Strategy Pattern and Microkernel |
 | FR-05 | Retrieval Configuration Panel | Drives runtime strategy switching |
 | FR-06 | Document Management Module | Drives Pipe-and-Filter ingestion pipeline |
+| FR-07 | Conversational Query Refinement | Drives two-phase LLM invocation: rewrite query → retrieve → generate |
 
 ### 2.2 Non-Functional Requirements
 
@@ -176,24 +177,60 @@ The text extraction filter uses the **Adapter Pattern** (`ExtractorRegistry`) to
 
 #### 5.2.2 Retrieval Engine (Microkernel + Strategy)
 
-The `Orchestrator` manages three retrieval plugins:
+The `Orchestrator` manages three retrieval plugins registered via `StrategyFactory`:
 
-- **SyntacticRetriever:** Rebuilds a BM25 index over paragraph-level chunks and scores query tokens. Average latency: ~2ms.
-- **SemanticRetriever:** Implements Chain of Responsibility with three handlers (TitleMatch → SummarySim → ContentSim) using ChromaDB and sentence-transformers. Average latency: ~72ms.
-- **CachingAgenticProxy:** Wraps `AgenticRetriever` (Ollama-based LLM reasoning) with an LRU cache. Cache hits return in <1ms.
+- **SyntacticRetriever:** Rebuilds a BM25 index over paragraph-level chunks at query time. Applies a 50%-of-top-score threshold to filter noise before returning results. Average latency: ~2ms.
+- **SemanticRetriever:** Adaptive — for corpora under 100 documents it queries ChromaDB directly with a 60%-similarity cutoff; for larger corpora it engages the full Chain of Responsibility pipeline (TitleMatch → SummarySim → ContentSim), reducing candidate sets by ~99% before the expensive vector comparison stage. Average steady-state latency: ~72ms.
+- **CachingAgenticProxy:** Wraps `AgenticRetriever` (Ollama `qwen2.5:7b`) with an LRU cache (128 entries, MD5-keyed on normalised query). Cache hits return in <1ms. The `AgenticRetriever` presents the LLM with a document catalogue (id, title, summary) and asks it to rank relevant IDs — a lightweight agentic approach that avoids file-system tool calls while still leveraging LLM reasoning.
 
-Each plugin is invoked inside an exception boundary (Tactic 3). If a plugin crashes or times out, the Orchestrator returns partial results from healthy plugins.
+Each plugin is invoked inside an exception boundary (Tactic 3 — Fault Isolation). If a plugin crashes or times out, the Orchestrator logs the failure, marks the plugin degraded, and returns partial results from healthy plugins — the user always receives a response.
 
-#### 5.2.3 Context Aggregation
+#### 5.2.3 Context Aggregation and Enrichment
 
-The `ContextAggregator` merges results from all strategies using **Reciprocal Rank Fusion (RRF)** with constant k=60. This produces a unified ranking that balances the strengths of different strategies without requiring score normalization.
+The `ContextAggregator` merges results from all active strategies using **Reciprocal Rank Fusion (RRF)** with constant k=60. RRF avoids score normalisation — each document's aggregated score is the sum of `1/(k + rank)` across strategies, naturally boosting documents that appear highly in multiple strategy results.
 
-#### 5.2.4 Frontend
+After merging, the Orchestrator applies a **relevance filter**: only chunks scoring ≥70% of the top RRF score are sent to the LLM. For each relevant chunk, the full document content (up to 2,000 chars) is fetched from SQLite to provide richer context than the stored snippet alone.
+
+#### 5.2.4 Conversational RAG with Query Rewriting (FR-07)
+
+The Orchestrator implements a two-phase LLM pipeline when conversation history is present:
+
+```
+User query + history
+       │
+       ▼
+ rewrite_query()  ─── LLM rewrites follow-up into standalone search query
+       │
+       ▼
+  orch.query()   ─── Retrieval using rewritten query (BM25 + vector)
+       │
+       ▼
+generate_answer_stream()  ─── Generation using original query + history + retrieved context
+```
+
+The rewrite step is skipped entirely for first messages (no history), adding zero overhead. For follow-ups, the rewritten query is surfaced to the user via the UI's **RewriteChip** component with hover/tap disclosure — full transparency without cluttering the response.
+
+The streaming endpoint (`POST /api/query/stream`) emits four SSE event types in order:
+
+| Event | Fields | When emitted |
+|-------|--------|-------------|
+| `rewrite` | `rewritten_query`, `rewrite_time_ms` | After query rewrite (if history present) |
+| `sources` | `sources[]`, `strategies_used`, `retrieval_time_ms` | As soon as retrieval completes |
+| `token` | `token` | Once per LLM output token |
+| `done` | `generation_time_ms` | After last token |
+
+This phased streaming lets the frontend render cited sources immediately while the answer is still generating, giving users actionable information with minimal perceived latency.
+
+#### 5.2.5 LLM Citation Protocol
+
+The generation prompt instructs the LLM to cite sources using `[[doc:ID|Title]]` syntax. The frontend parses this with a regex transform before passing the answer to the Markdown renderer, converting references to clickable links that open the original document inline in a browser tab via the `/api/documents/{id}/download` endpoint.
+
+#### 5.2.6 Frontend
 
 The Next.js frontend provides three pages:
-- **Query Dashboard:** Chatbot-style interface with strategy toggles, source citation expansion, and feedback buttons
-- **Document Management:** Drag-and-drop upload, document listing with search, delete functionality
-- **Settings & Analytics:** Strategy enable/disable cards, model configuration, real-time usage statistics
+- **Query Dashboard:** Streaming chatbot interface with per-message strategy toggles, expandable source cards (fully clickable, open document preview), RewriteChip hover card showing the rewritten query, and three-phase loading states ("Understanding context…" → "Searching documents…" → "Generating answer…")
+- **Document Management:** Upload, document listing with search, delete; each document card opens the original file inline in a new tab
+- **Settings & Analytics:** Strategy enable/disable toggles, model configuration, real-time usage statistics (total queries, feedback counts, average response time)
 
 ### 5.3 Architecture Analysis
 
@@ -230,21 +267,21 @@ All configurations pass NFR-01 (P95 ≤ 15s) by a wide margin. The monolithic ar
 | Initial complexity | Higher | Lower |
 | Dispatch overhead | ~2ms | None |
 
-**Conclusion:** The Microkernel + Strategy architecture is the correct choice because extensibility (ASR-01) is the primary quality driver, and fault isolation (ASR-04) prevents the unreliable agentic retriever from degrading the overall system.
+**Conclusion:** The Microkernel + Strategy architecture is the correct choice because extensibility (ASR-01) is the primary quality driver, and fault isolation (ASR-04) prevents the unreliable agentic retriever from degrading the overall system. The SSE streaming endpoint further reduces *perceived* latency: users see retrieved sources within the retrieval window (~72ms) rather than waiting for generation to complete (up to several seconds), making the architecture's separation of retrieval and generation phases directly user-visible.
 
 ### 5.4 Design Patterns Summary
 
 | Pattern | File | Purpose |
 |---------|------|---------|
-| Strategy | `retrieval/strategy.py` | Polymorphic retrieval algorithms |
-| Microkernel | `retrieval/orchestrator.py` | Plugin-based engine with fault isolation |
-| Factory | `retrieval/factory.py` | Decoupled strategy instantiation |
-| Chain of Responsibility | `retrieval/semantic.py` | Cascading semantic filters |
-| Adapter | `ingestion/extractors.py` | Uniform document format extraction |
-| Proxy (Caching) | `retrieval/agentic.py` | LRU cache for agentic retrieval |
-| Pipe-and-Filter | `ingestion/pipeline.py` | Linear ingestion pipeline |
-| Facade | `api/routes.py` | Single API entry point |
-| Singleton | `ingestion/pipeline.py` | Embedding model reuse |
+| Strategy | `retrieval/strategy.py` | `RetrievalStrategy` ABC; polymorphic retrieval algorithms |
+| Microkernel | `retrieval/orchestrator.py` | Plugin registry, fault-isolated dispatch, RRF aggregation |
+| Factory | `retrieval/factory.py` | `StrategyFactory.create()` decouples instantiation from Orchestrator |
+| Chain of Responsibility | `retrieval/semantic.py` | `TitleMatch → SummarySim → ContentSim` cascade for large corpora |
+| Adapter | `ingestion/extractors.py` | `ExtractorRegistry` maps file extensions to `TextExtractor` implementations |
+| Proxy (Caching) | `retrieval/agentic.py` | `CachingAgenticProxy` wraps `AgenticRetriever` with MD5-keyed LRU cache |
+| Pipe-and-Filter | `ingestion/pipeline.py` | Five stateless filters operating on `DocumentEnvelope` |
+| Facade | `api/routes.py` | Single REST entry point hiding retrieval and ingestion internals |
+| Singleton | `ingestion/pipeline.py` | `get_embedding_model()` loads `SentenceTransformer` once, cached in module dict |
 
 ---
 
@@ -252,28 +289,32 @@ All configurations pass NFR-01 (P95 ≤ 15s) by a wide margin. The monolithic ar
 
 ### 6.1 Architectural Decisions
 
-The decision to use a Microkernel architecture proved valuable. When Ollama is unavailable, the system gracefully degrades to syntactic + semantic retrieval without any special error handling — the fault isolation boundary handles it automatically.
+The Microkernel architecture proved its value repeatedly during development. When Ollama is unavailable, the system gracefully degrades to syntactic + semantic retrieval without any special error handling — the fault isolation boundary at the Orchestrator level handles it automatically. Adding conversational query rewriting also fit naturally into the Orchestrator without touching any plugin code, confirming that the Facade + Microkernel boundary was drawn at the right level.
+
+The decision to implement the Semantic Retriever with adaptive behaviour — direct ChromaDB query for small corpora, Chain of Responsibility for large ones — was driven by the observation that the cascading filter's heuristics (title overlap, summary similarity) lack statistical power over tiny corpora. The switch point (100 documents) keeps the small-corpus experience accurate without sacrificing the architectural intent of the CoR pattern at scale.
 
 ### 6.2 Technology Choices
 
-- **ChromaDB** was an excellent choice for the vector store: embedded, zero-config, and supports metadata filtering
-- **sentence-transformers** with `all-MiniLM-L6-v2` provides good semantic quality at minimal computational cost
+- **ChromaDB** was an excellent choice for the vector store: embedded, zero-config, persistent, and supports `$in` metadata filtering needed for the Chain of Responsibility's ContentSim stage
+- **sentence-transformers** with `all-MiniLM-L6-v2` provides strong semantic quality at minimal computational cost with no GPU requirement
 - **uv** significantly improved Python dependency management speed compared to pip
-- **pdfplumber** handles PDF text extraction well, with graceful table fallback
+- **pdfplumber** handles PDF text extraction cleanly, with graceful table fallback
+- **SSE (Server-Sent Events)** over WebSockets was the right choice for streaming: unidirectional, HTTP/1.1 compatible, no upgrade handshake, and directly supported by FastAPI's `StreamingResponse`
 
 ### 6.3 Challenges
 
-- Balancing the Chain of Responsibility thresholds required tuning to avoid discarding relevant documents at early stages
-- The BM25 index rebuild on every query is acceptable for the current document count but would need an event-driven approach for production scale
-- Agentic retrieval quality depends heavily on the SLM's reasoning capability — smaller models sometimes produce unreliable document rankings
+- The Chain of Responsibility filter thresholds required careful tuning. An aggressive `TitleMatchHandler` threshold discards relevant documents when the user's phrasing differs from the document title. The current implementation falls through to returning the top candidates by corpus size when no title overlap exists.
+- The BM25 index rebuilds from SQLite on every query. This is acceptable for the current corpus size (~5–50 documents) but would need to be replaced with an event-driven incremental update in production.
+- Conversational query rewriting adds one full LLM round-trip before retrieval. For long conversations the rewrite prompt grows; capping history to the last 6 messages keeps this bounded.
+- Agentic retrieval quality depends on the SLM's instruction-following ability. Smaller models occasionally return non-numeric output instead of document IDs, requiring robust regex parsing as a fallback.
 
 ### 6.4 Future Improvements
 
-- **OCR support** for image-based PDF pages
-- **Event-driven BM25 index updates** instead of rebuild-on-query
-- **WebSocket streaming** for real-time answer generation
-- **Role-based access control** for admin vs. user distinction
-- **Graph RAG** as a fourth retrieval strategy to demonstrate extensibility
+- **OCR support** for image-based PDF pages (current extraction silently produces empty text for scanned PDFs)
+- **Event-driven BM25 index updates** — rebuild incrementally on document upload/delete rather than on every query
+- **Role-based access control** — separate admin (upload/delete) from read-only user access
+- **Graph RAG** as a fourth retrieval strategy, demonstrating extensibility by adding one new file + one factory line with no Orchestrator changes
+- **Persistent conversation storage** — currently conversation history lives only in the browser; persisting it server-side would enable cross-session continuity
 
 ---
 

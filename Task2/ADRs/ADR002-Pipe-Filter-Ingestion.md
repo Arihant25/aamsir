@@ -1,5 +1,9 @@
 # ADR 002: Pipe-and-Filter Architecture for Document Ingestion
 
+## Status
+
+Accepted
+
 ## Context and Problem Statement
 Ingesting documents involves a sequence of transformations: reading files, normalization, text extraction, summarization, embedding generation, and finally indexing. The order of these steps is fixed, but the implementation of each step (filter) might change (e.g., swapping OCR engines or embedding models). We need a flexible architecture that allows individual processing steps to be swapped or scaled independently.
 

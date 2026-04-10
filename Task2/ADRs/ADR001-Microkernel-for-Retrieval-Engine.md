@@ -1,5 +1,9 @@
 # ADR 001: Microkernel Architecture for Retrieval Engine
 
+## Status
+
+Accepted
+
 ## Context and Problem Statement
 The retrieval engine needs to support multiple, distinct retrieval strategies (Syntactic, Semantic, Agentic) today, with likely additions in the future (e.g., Graph RAG). These strategies evolve independently and have different dependencies (syntactic uses simple indexes, semantic uses large vector DBs, agentic uses SLMs + tools). A monolithic design would tightly couple the orchestrator to specific implementations, making it hard to add or remove strategies without code modification.
 

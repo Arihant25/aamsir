@@ -97,7 +97,7 @@ Frontend will be running at [http://localhost:3000](http://localhost:3000).
 
 ```bash
 brew install ollama
-ollama pull llama3.2:1b
+ollama pull qwen2.5:7b
 ollama serve
 ```
 
@@ -105,6 +105,7 @@ Then restart the backend. With Ollama running, AAMSIR will:
 
 - Enable the **Agentic** retrieval strategy (LLM-powered document reasoning)
 - Generate natural-language answers (instead of extractive summaries)
+- Perform **conversational query rewriting** — follow-up queries are rewritten into standalone search queries using conversation history before retrieval
 
 ---
 
@@ -115,6 +116,8 @@ Then restart the backend. With Ollama running, AAMSIR will:
 ```bash
 cd Task4/backend && uv sync && uv run python seed.py && uv run uvicorn src.aamsir.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+> **Note:** Without Ollama the system still works fully — syntactic and semantic retrieval run locally without any LLM. Ollama is only needed for the Agentic strategy, LLM-generated answers, and conversational query rewriting.
 
 **Terminal 2 — Frontend:**
 
@@ -128,18 +131,20 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## API Endpoints
 
-| Method   | Endpoint                | Description                                  |
-| -------- | ----------------------- | -------------------------------------------- |
-| `GET`    | `/api/health`           | Health check and available strategies        |
-| `POST`   | `/api/query`            | Submit a query with strategy selection       |
-| `POST`   | `/api/documents/upload` | Upload a document for ingestion              |
-| `GET`    | `/api/documents`        | List all ingested documents                  |
-| `GET`    | `/api/documents/{id}`   | Get document details and full content        |
-| `DELETE` | `/api/documents/{id}`   | Remove a document and its vectors            |
-| `POST`   | `/api/feedback`         | Submit user feedback (helpful / not helpful) |
-| `GET`    | `/api/config`           | Get current configuration                    |
-| `PUT`    | `/api/config`           | Update enabled strategies                    |
-| `GET`    | `/api/stats`            | System analytics and usage statistics        |
+| Method     | Endpoint                       | Description                                                  |
+| ---------- | ------------------------------ | ------------------------------------------------------------ |
+| `GET`      | `/api/health`                  | Health check and available strategies                        |
+| `POST`     | `/api/query`                   | Submit a query (blocking, returns complete response)         |
+| `POST`     | `/api/query/stream`            | SSE streaming — emits rewrite, sources, token, done events   |
+| `POST`     | `/api/documents/upload`        | Upload a document for ingestion                              |
+| `GET`      | `/api/documents`               | List all ingested documents                                  |
+| `GET`      | `/api/documents/{id}`          | Get document details and full content                        |
+| `GET`      | `/api/documents/{id}/download` | Serve original file inline (PDF/TXT/MD preview)              |
+| `DELETE`   | `/api/documents/{id}`          | Remove a document and its vectors                            |
+| `POST`     | `/api/feedback`                | Submit user feedback (helpful / not helpful)                 |
+| `GET`      | `/api/config`                  | Get current configuration                                    |
+| `PUT`      | `/api/config`                  | Update enabled strategies                                    |
+| `GET`      | `/api/stats`                   | System analytics and usage statistics                        |
 
 ## Project Structure
 
