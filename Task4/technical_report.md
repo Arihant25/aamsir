@@ -320,6 +320,8 @@ The decision to implement the Semantic Retriever with adaptive behaviour — dir
 
 ## 7. Individual Contributions
 
+<!-- TODO: Fill in actual team member names and contributions before submission -->
+
 | Team Member | Contributions |
 |-------------|--------------|
 | Member 1 | Task 1 (Requirements), Syntactic Retriever, API design |
@@ -342,6 +344,6 @@ The decision to implement the Semantic Retriever with adaptive behaviour — dir
 
 ---
 
-**GitHub Repository:** [Link to be added]
+**GitHub Repository:** [https://github.com/Arihant25/aamsir](https://github.com/Arihant25/aamsir)
 
 **Submission Format:** Project3_5.pdf

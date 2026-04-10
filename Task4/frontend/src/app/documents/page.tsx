@@ -144,7 +144,7 @@ export default function DocumentsPage() {
               <input
                 type="file"
                 multiple
-                accept=".pdf,.txt,.md,.docx"
+                accept=".pdf,.txt,.md"
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files) handleUpload(e.target.files);
