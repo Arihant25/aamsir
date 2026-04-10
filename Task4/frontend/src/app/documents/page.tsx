@@ -14,6 +14,7 @@ import {
   Clock,
   Hash,
   Layers,
+  Image,
 } from "lucide-react";
 import { api, getDocumentDownloadUrl, type DocumentInfo } from "@/lib/api";
 
@@ -106,6 +107,15 @@ export default function DocumentsPage() {
         return <FileText className="w-5 h-5 text-danger" />;
       case "md":
         return <Hash className="w-5 h-5 text-accent" />;
+      case "png":
+      case "jpg":
+      case "jpeg":
+      case "bmp":
+      case "tiff":
+      case "tif":
+      case "webp":
+      case "gif":
+        return <Image className="w-5 h-5 text-success" />;
       default:
         return <File className="w-5 h-5 text-primary" />;
     }
@@ -144,7 +154,7 @@ export default function DocumentsPage() {
               <input
                 type="file"
                 multiple
-                accept=".pdf,.txt,.md"
+                accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,.gif"
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files) handleUpload(e.target.files);
@@ -182,7 +192,7 @@ export default function DocumentsPage() {
               : "Drag and drop files here, or click Upload above"}
           </p>
           <p className="text-xs text-muted/60 mt-1">
-            Supports PDF, TXT, MD files
+            Supports PDF, TXT, MD, and images (PNG, JPG, BMP, TIFF, WEBP, GIF)
           </p>
         </div>
 
