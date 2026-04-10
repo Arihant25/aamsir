@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.routes import router, set_orchestrator
+from .config import CORS_ORIGINS
 from .database import init_db
 from .retrieval.factory import StrategyFactory
 from .retrieval.orchestrator import Orchestrator
@@ -32,7 +33,7 @@ def create_app() -> FastAPI:
     # CORS for Next.js frontend
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_origins=CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

@@ -35,6 +35,8 @@ SQLITE_URL = f"sqlite:///{DB_DIR / 'aamsir.db'}"
 EMBEDDING_MODEL = os.getenv("AAMSIR_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 OLLAMA_MODEL = os.getenv("AAMSIR_OLLAMA_MODEL", "qwen2.5:7b")
 OLLAMA_BASE_URL = os.getenv("AAMSIR_OLLAMA_URL", "http://localhost:11434")
+_raw_origins = os.getenv("AAMSIR_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+CORS_ORIGINS: list[str] = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
 # Retrieval defaults
 BM25_TOP_K = 10
