@@ -14,16 +14,19 @@ import {
   Clock,
   RefreshCw,
   Search,
+  Terminal,
+  List,
 } from "lucide-react";
 import Markdown from "react-markdown";
 import { prepareWithSegments, measureLineStats } from "@chenglou/pretext";
-import { api, getDocumentDownloadUrl, type SourceDocument, type HistoryMessage } from "@/lib/api";
+import { api, getDocumentDownloadUrl, type SourceDocument, type HistoryMessage, type ToolCall } from "@/lib/api";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   sources?: SourceDocument[];
+  toolCalls?: ToolCall[];
   strategies?: string[];
   rewriteTime?: number;
   rewrittenQuery?: string;
@@ -202,9 +205,8 @@ export default function QueryPage() {
     "syntactic",
     "semantic",
   ]);
-  const [expandedSources, setExpandedSources] = useState<Set<string>>(
-    new Set()
-  );
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+  const [expandedToolCalls, setExpandedToolCalls] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -225,6 +227,15 @@ export default function QueryPage() {
 
   const toggleSources = (msgId: string) => {
     setExpandedSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) next.delete(msgId);
+      else next.add(msgId);
+      return next;
+    });
+  };
+
+  const toggleToolCalls = (msgId: string) => {
+    setExpandedToolCalls((prev) => {
       const next = new Set(prev);
       if (next.has(msgId)) next.delete(msgId);
       else next.add(msgId);
@@ -282,6 +293,7 @@ export default function QueryPage() {
           draft = {
             ...draft,
             sources: event.sources,
+            toolCalls: event.tool_calls,
             strategies: event.strategies_used,
             retrievalTime: event.retrieval_time_ms,
           };
@@ -523,6 +535,60 @@ export default function QueryPage() {
                             <ThumbsDown className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Agent tool calls — shown when agentic strategy ran */}
+                    {msg.toolCalls && msg.toolCalls.length > 0 && (
+                      <div>
+                        <button
+                          onClick={() => toggleToolCalls(msg.id)}
+                          className="flex items-center gap-2 text-xs font-medium text-muted hover:text-foreground transition-colors duration-150 px-1"
+                        >
+                          <Terminal className="w-3.5 h-3.5" />
+                          {msg.toolCalls.length} agent action{msg.toolCalls.length !== 1 ? "s" : ""}
+                          {expandedToolCalls.has(msg.id) ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          )}
+                        </button>
+                        {expandedToolCalls.has(msg.id) && (
+                          <div className="mt-2 space-y-1.5">
+                            {msg.toolCalls.map((tc, i) => {
+                              const toolColors: Record<string, string> = {
+                                ls_docs: "text-blue-500 bg-blue-500/10 border-blue-500/20",
+                                grep_doc: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+                                cat_doc: "text-green-500 bg-green-500/10 border-green-500/20",
+                              };
+                              const ToolIcon = tc.name === "ls_docs" ? List : tc.name === "grep_doc" ? Search : FileText;
+                              const colorClass = toolColors[tc.name] ?? "text-muted bg-surface border-border";
+                              const argsStr = Object.entries(tc.args)
+                                .map(([k, v]) => `${k}="${v}"`)
+                                .join(" ");
+                              return (
+                                <div
+                                  key={i}
+                                  className="bg-background border border-border rounded-xl p-3 text-xs font-mono animate-fade-in-up"
+                                  style={{ animationDelay: `${i * 40}ms` }}
+                                >
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium ${colorClass}`}>
+                                      <ToolIcon className="w-3 h-3" />
+                                      {tc.name}
+                                    </span>
+                                    {argsStr && (
+                                      <span className="text-muted/70 truncate">{argsStr}</span>
+                                    )}
+                                  </div>
+                                  <p className="text-muted/80 leading-relaxed line-clamp-2 wrap-break-word whitespace-pre-wrap">
+                                    {tc.result.slice(0, 200)}{tc.result.length > 200 ? "…" : ""}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
 

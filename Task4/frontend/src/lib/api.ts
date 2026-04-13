@@ -80,9 +80,15 @@ export interface HistoryMessage {
   content: string;
 }
 
+export interface ToolCall {
+  name: string;
+  args: Record<string, string>;
+  result: string;
+}
+
 export type StreamEvent =
   | { type: "rewrite"; rewritten_query: string; rewrite_time_ms: number }
-  | { type: "sources"; sources: SourceDocument[]; strategies_used: string[]; retrieval_time_ms: number }
+  | { type: "sources"; sources: SourceDocument[]; strategies_used: string[]; retrieval_time_ms: number; tool_calls?: ToolCall[] }
   | { type: "token"; token: string }
   | { type: "done"; generation_time_ms: number };
 

@@ -174,6 +174,12 @@ def query_stream(req: QueryRequest):
             for c in merged
         ]
 
+        # Collect agentic tool calls if the strategy was used
+        agentic_tool_calls: list[dict] = []
+        agentic_strategy = orch._strategies.get("agentic")
+        if agentic_strategy and hasattr(agentic_strategy, "_last_tool_calls"):
+            agentic_tool_calls = agentic_strategy._last_tool_calls
+
         yield (
             "data: "
             + json.dumps({
@@ -181,6 +187,7 @@ def query_stream(req: QueryRequest):
                 "sources": sources,
                 "strategies_used": list(per_strategy.keys()),
                 "retrieval_time_ms": round(elapsed_ms, 2),
+                "tool_calls": agentic_tool_calls,
             })
             + "\n\n"
         )
