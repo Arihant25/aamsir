@@ -1,0 +1,41 @@
+======================================================================
+AAMSIR Benchmark — Latency & Throughput Analysis
+======================================================================
+Test queries: 20
+Available strategies: ['syntactic', 'semantic', 'agentic']
+
+--- Configuration: syntactic ---
+  Mean:       13.9 ms
+  P50:        13.8 ms
+  P95:        14.5 ms
+  P99:        16.9 ms
+  Min:        13.1 ms
+  Max:        17.5 ms
+  Total time: 0.28 s
+  Throughput: 71.9 queries/sec
+  NFR-01 (P95 ≤ 15s): PASS
+
+--- Configuration: semantic ---
+  Mean:       283.5 ms
+  P50:        17.2 ms
+  P95:        302.5 ms
+  P99:        4252.0 ms
+  Min:        15.9 ms
+  Max:        5239.4 ms
+  Total time: 5.67 s
+  Throughput: 3.5 queries/sec
+  NFR-01 (P95 ≤ 15s): PASS
+
+--- Configuration: syntactic+semantic ---
+  Mean:       30.1 ms
+  P50:        29.6 ms
+  P95:        32.9 ms
+  P99:        34.3 ms
+  Min:        28.3 ms
+  Max:        34.6 ms
+  Total time: 0.60 s
+  Throughput: 33.2 queries/sec
+  NFR-01 (P95 ≤ 15s): PASS
+
+======================================================================
+Benchmark complete.

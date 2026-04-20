@@ -7,9 +7,10 @@ This analysis compares the **implemented architecture** (Microkernel with Strate
 ## 2. Implemented Architecture: Microkernel + Strategy Pattern
 
 ### Description
+
 The AAMSIR retrieval engine uses a **Microkernel (Plugin) architecture** where the `Orchestrator` acts as the kernel/host, and individual retrieval strategies (`SyntacticRetriever`, `SemanticRetriever`, `CachingAgenticProxy`) are loaded as plugins via a common `RetrievalStrategy` interface (Strategy Pattern).
 
-```
+```text
 ┌──────────────────────────────────────────────────────┐
 │                    Orchestrator (Kernel)             │
 │                                                      │
@@ -26,6 +27,7 @@ The AAMSIR retrieval engine uses a **Microkernel (Plugin) architecture** where t
 ```
 
 **Key characteristics:**
+
 - Strategies are registered at startup via `StrategyFactory.create()` and `orchestrator.register()`
 - Each strategy conforms to the `RetrievalStrategy` interface
 - The Orchestrator invokes strategies polymorphically — no type checks or conditionals
@@ -67,36 +69,40 @@ Benchmark methodology: 20 queries executed against the 5-document corpus, measur
 
 #### Microkernel + Strategy (Implemented) — Measured Results
 
-Benchmark: 20 diverse queries against a 5-document corpus on Apple Silicon (MPS). Results from `benchmark.py`:
+**Hardware:** MacBook Pro with Apple M1 Pro, 16 GB RAM, macOS. All inference (embedding model + optional SLM) runs locally on-device using MPS (Metal Performance Shaders).
 
-| Metric | Syntactic Only | Semantic Only | Syntactic + Semantic |
-|--------|---------------|---------------|---------------------|
-| Mean   | 2.1ms         | 330ms         | 72ms                |
-| P50    | 1.9ms         | 72ms          | 72ms                |
-| P95    | 2.6ms         | 348ms         | 77ms                |
-| P99    | 4.5ms         | 4,219ms       | 78ms                |
-| Throughput | 487 q/s   | 3.0 q/s       | 13.8 q/s            |
+Benchmark: 20 diverse queries against an 8-document corpus. Results from `benchmark.py`:
+
+| Metric     | Syntactic Only | Semantic Only | Syntactic + Semantic |
+| ---------- | -------------- | ------------- | -------------------- |
+| Mean       | 13.5ms         | 491.5ms       | 30.1ms               |
+| P50        | 13.3ms         | 17.3ms        | 29.8ms               |
+| P95        | 14.4ms         | 787.3ms       | 32.9ms               |
+| P99        | 17.6ms         | 6,383ms       | 34.1ms               |
+| Throughput | 73.8 q/s       | 2.0 q/s       | 33.2 q/s             |
 
 **Key observations:**
+
 - All configurations well within the 15s P95 budget — **PASS** across the board
-- Syntactic (BM25) is extremely fast (~2ms) due to in-memory index rebuild + scoring
-- Semantic retrieval P99 spike (4.2s) reflects model cold-start; subsequent queries run at ~72ms due to caching
-- Combined syntactic+semantic achieves excellent steady-state performance (~72ms P50) because the BM25 index warms in <2ms while semantic runs in parallel
+- Syntactic (BM25) is fast (~13ms) due to in-memory index rebuild + scoring
+- Semantic retrieval P99 spike (6.4s) reflects model cold-start; subsequent queries run at ~17ms due to caching
+- Combined syntactic+semantic achieves excellent steady-state performance (~30ms P50) because BM25 adds only ~13ms on top of the semantic retrieval time
 - The Chain of Responsibility cascade in SemanticRetriever reduces candidate set by ~99%, keeping vector comparisons manageable
 - Caching Proxy reduces repeated agentic queries to <1ms (cache hit)
+- **Note:** The above benchmarks measure retrieval latency only. End-to-end response generation (via Ollama SLM) adds approximately 5--8 seconds depending on the model chosen (e.g., qwen2.5:7b), as the LLM must synthesize an answer from the retrieved context. This generation time is independent of the retrieval architecture
 
 #### Monolithic Equivalent (Estimated)
 
 For a monolithic architecture with the same retrieval logic, response times would be functionally **similar** for individual strategies, since the underlying algorithms are identical. However:
 
-| Scenario | Microkernel | Monolithic | Difference |
-|----------|-------------|------------|------------|
-| Single strategy execution | ~850ms | ~850ms | Negligible |
-| Strategy failure + fallback | ~900ms (graceful) | ~850ms + error handling | Similar |
-| Adding new strategy | 0ms overhead | 0ms overhead | Negligible |
-| Plugin crash isolation | Partial results returned | Entire query fails | **Significant** |
+| Scenario                    | Microkernel              | Monolithic             | Difference      |
+| --------------------------- | ------------------------ | ---------------------- | --------------- |
+| Single strategy execution   | ~17ms                    | ~17ms                  | Negligible      |
+| Strategy failure + fallback | ~19ms (graceful)         | ~17ms + error handling | Similar         |
+| Adding new strategy         | 0ms overhead             | 0ms overhead           | Negligible      |
+| Plugin crash isolation      | Partial results returned | Entire query fails     | **Significant** |
 
-**Latency verdict:** For raw execution speed, both architectures perform equivalently. The microkernel adds negligible overhead (~2ms for plugin dispatch). The advantage appears during **failure scenarios** — the monolith's crash propagation can increase effective P95 latency by causing total query failures that require retry.
+**Latency verdict:** For raw execution speed, both architectures perform equivalently. The microkernel adds negligible overhead (~13ms for plugin dispatch). The advantage appears during **failure scenarios** — the monolith's crash propagation can increase effective P95 latency by causing total query failures that require retry.
 
 ### NFR-05: Modifiability (New strategies integrable within 100 person-hours)
 
@@ -106,13 +112,13 @@ We measure modifiability by counting the **number of files/classes that must be 
 
 To add a `GraphRetriever`:
 
-| Step | File | Lines Changed | Description |
-|------|------|---------------|-------------|
-| 1 | `retrieval/graph.py` (NEW) | ~60 lines | Implement `RetrievalStrategy` interface |
-| 2 | `retrieval/factory.py` | +3 lines | Add `case "graph"` to factory |
-| 3 | — | 0 | Orchestrator unchanged (OCP) |
-| 4 | — | 0 | API routes unchanged |
-| 5 | — | 0 | Frontend unchanged (dynamic strategy list) |
+| Step | File                       | Lines Changed | Description                                |
+| ---- | -------------------------- | ------------- | ------------------------------------------ |
+| 1    | `retrieval/graph.py` (NEW) | ~60 lines     | Implement `RetrievalStrategy` interface    |
+| 2    | `retrieval/factory.py`     | +3 lines      | Add `case "graph"` to factory              |
+| 3    | —                          | 0             | Orchestrator unchanged (OCP)               |
+| 4    | —                          | 0             | API routes unchanged                       |
+| 5    | —                          | 0             | Frontend unchanged (dynamic strategy list) |
 
 **Total: 1 new file, 1 modified file, ~63 lines of code.**
 **Estimated effort: 4-8 person-hours.**
@@ -121,13 +127,13 @@ To add a `GraphRetriever`:
 
 To add the same `GraphRetriever` in a monolithic controller:
 
-| Step | File | Lines Changed | Description |
-|------|------|---------------|-------------|
-| 1 | `monolithic_retriever.py` | +60 lines | Add new `elif` branch with all logic |
-| 2 | `monolithic_retriever.py` | +5-10 lines | Update initialization, add dependencies |
-| 3 | `monolithic_retriever.py` | Potential refactor | Class grows; may need to reorganize |
-| 4 | `api/routes.py` | +5 lines | Add validation for new strategy type |
-| 5 | Test files | Significant | Cannot unit-test in isolation; need full integration |
+| Step | File                      | Lines Changed      | Description                                          |
+| ---- | ------------------------- | ------------------ | ---------------------------------------------------- |
+| 1    | `monolithic_retriever.py` | +60 lines          | Add new `elif` branch with all logic                 |
+| 2    | `monolithic_retriever.py` | +5-10 lines        | Update initialization, add dependencies              |
+| 3    | `monolithic_retriever.py` | Potential refactor | Class grows; may need to reorganize                  |
+| 4    | `api/routes.py`           | +5 lines           | Add validation for new strategy type                 |
+| 5    | Test files                | Significant        | Cannot unit-test in isolation; need full integration |
 
 **Total: 0 new files, 2-3 modified files, ~80-100 lines changed.**
 **Estimated effort: 16-24 person-hours.**
@@ -136,16 +142,16 @@ The monolithic approach requires modifying existing code (violating OCP), increa
 
 ## 4. Trade-off Analysis
 
-| Quality Attribute | Microkernel + Strategy | Monolithic |
-|---|---|---|
-| **Latency** | Equivalent (~920ms dual-strategy) | Equivalent (~920ms) |
-| **Fault Tolerance** | Partial results on plugin crash | Total query failure on crash |
-| **Modifiability** | 4-8 hrs to add strategy (OCP) | 16-24 hrs, requires modifying core |
-| **Testability** | Each strategy testable in isolation | Integration testing required |
-| **Complexity** | Higher initial complexity (interfaces, registry, factory) | Simpler initial implementation |
-| **Performance Overhead** | ~2ms plugin dispatch overhead | No dispatch overhead |
-| **Code Size** | More files, smaller classes | Fewer files, larger classes |
-| **Debuggability** | Indirection can obscure flow | Linear flow, easier to trace |
+| Quality Attribute        | Microkernel + Strategy                                    | Monolithic                         |
+| ------------------------ | --------------------------------------------------------- | ---------------------------------- |
+| **Latency**              | Equivalent (~30ms dual-strategy steady-state)             | Equivalent (~30ms)                 |
+| **Fault Tolerance**      | Partial results on plugin crash                           | Total query failure on crash       |
+| **Modifiability**        | 4-8 hrs to add strategy (OCP)                             | 16-24 hrs, requires modifying core |
+| **Testability**          | Each strategy testable in isolation                       | Integration testing required       |
+| **Complexity**           | Higher initial complexity (interfaces, registry, factory) | Simpler initial implementation     |
+| **Performance Overhead** | ~13ms plugin dispatch overhead                            | No dispatch overhead               |
+| **Code Size**            | More files, smaller classes                               | Fewer files, larger classes        |
+| **Debuggability**        | Indirection can obscure flow                              | Linear flow, easier to trace       |
 
 ## 5. Conclusion
 
@@ -155,7 +161,7 @@ The Microkernel + Strategy architecture was the correct choice for AAMSIR becaus
 
 2. **Fault isolation prevents cascading failures.** The agentic retriever (SLM + tool use) is inherently unreliable. In the monolithic architecture, an agentic crash would kill the entire query. The microkernel ensures users always get results from healthy strategies.
 
-3. **The latency cost is negligible.** The ~2ms plugin dispatch overhead is insignificant compared to the 700-1,000ms retrieval and embedding operations.
+3. **The latency cost is negligible.** The ~13ms plugin dispatch overhead is insignificant compared to the 17-787ms retrieval and embedding operations measured in our benchmarks.
 
 4. **The initial complexity cost is justified.** While the monolithic approach is simpler to build initially (~30% fewer lines), the investment in clean interfaces pays dividends in maintenance, testing, and evolution — critical qualities for a system intended for production deployment in institutional infrastructure.
 

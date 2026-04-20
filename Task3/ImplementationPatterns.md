@@ -17,6 +17,11 @@ The Strategy Pattern defines a **common interface** (`RetrievalStrategy`) for a 
 
 #### Class Diagram
 
+![Strategy Pattern Class Diagram](strategy_class_diagram.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 classDiagram
     class RetrievalStrategy {
@@ -56,7 +61,7 @@ classDiagram
         -strategies: List~RetrievalStrategy~
         -aggregator: ContextAggregator
         +register(strategy: RetrievalStrategy) void
-        +handle_query(query: str) Answer
+        +query(query: str) Answer
     }
 
     class ContextAggregator {
@@ -72,13 +77,20 @@ classDiagram
     Orchestrator --> ContextAggregator
 ```
 
+</details>
+
 ### How It Works in AAMSIR
 1. At startup, concrete strategy instances are created and **registered** with the `Orchestrator` via `register()`.
-2. When `handle_query(query)` is called, the Orchestrator iterates over its `strategies` list and calls `retrieve(query)` on each — without any type checks or conditionals.
+2. When `query(query)` is called, the Orchestrator iterates over its `strategies` list and calls `retrieve(query)` on each — without any type checks or conditionals.
 3. The raw results (one `List[Document]` per strategy) are passed to the `ContextAggregator`, which deduplicates and re-ranks them into a final context window.
 4. Adding a new retrieval strategy (e.g., `GraphRetriever`) requires only: implementing `RetrievalStrategy` and calling `orchestrator.register(GraphRetriever(...))`. The Orchestrator code is **not modified**.
 
 #### Sequence Diagram
+
+![Strategy Pattern Sequence Diagram](strategy_sequence_diagram.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 sequenceDiagram
@@ -89,19 +101,19 @@ sequenceDiagram
     participant CachingAgenticProxy
     participant ContextAggregator
 
-    User->>Orchestrator: handle_query("What is the leave policy?")
-    par Invoke all strategies
-        Orchestrator->>SyntacticRetriever: retrieve(query)
-        SyntacticRetriever-->>Orchestrator: [Doc1, Doc5]
-        Orchestrator->>SemanticRetriever: retrieve(query)
-        SemanticRetriever-->>Orchestrator: [Doc3, Doc5, Doc8]
-        Orchestrator->>CachingAgenticProxy: retrieve(query)
-        CachingAgenticProxy-->>Orchestrator: [Doc2, Doc5]
-    end
+    User->>Orchestrator: query("What is the leave policy?")
+    Orchestrator->>SyntacticRetriever: retrieve(query)
+    SyntacticRetriever-->>Orchestrator: [Doc1, Doc5]
+    Orchestrator->>SemanticRetriever: retrieve(query)
+    SemanticRetriever-->>Orchestrator: [Doc3, Doc5, Doc8]
+    Orchestrator->>CachingAgenticProxy: retrieve(query)
+    CachingAgenticProxy-->>Orchestrator: [Doc2, Doc5]
     Orchestrator->>ContextAggregator: merge([[Doc1,Doc5], [Doc3,Doc5,Doc8], [Doc2,Doc5]])
     ContextAggregator-->>Orchestrator: [Doc5, Doc3, Doc1, Doc2, Doc8]
     Orchestrator-->>User: Answer with citations
 ```
+
+</details>
 
 ### Consequences
 | | Detail |
@@ -124,6 +136,11 @@ The solution is a **graduated filtering pipeline**: a sequence of handlers, each
 The Chain of Responsibility defines an **abstract handler** with a method to process a request and a reference to the next handler in the chain. Each concrete handler either fulfills the request fully or delegates to the next handler after doing its own processing.
 
 #### Class Diagram
+
+![Chain of Responsibility Class Diagram](cor_class_diagram.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 classDiagram
@@ -167,6 +184,8 @@ classDiagram
     SemanticRetriever --> SemanticFilterHandler : filter_chain
 ```
 
+</details>
+
 ### How It Works in AAMSIR
 The `SemanticRetriever` builds the chain on initialization:
 
@@ -184,6 +203,11 @@ When `retrieve(query)` is called:
 
 #### Sequence Diagram
 
+![Chain of Responsibility Sequence Diagram](cor_sequence_diagram.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 sequenceDiagram
     participant SemanticRetriever
@@ -199,6 +223,8 @@ sequenceDiagram
     Note over ContentSimHandler: Cosine sim on content embeddings
     ContentSimHandler-->>SemanticRetriever: top-15 documents
 ```
+
+</details>
 
 ### Candidate Set Reduction
 

@@ -151,7 +151,6 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 ```text
 Task4/
 ├── README.md                          # This file
-├── technical_report.md                # Full technical report (Tasks 1-4)
 ├── .gitignore
 │
 ├── backend/
